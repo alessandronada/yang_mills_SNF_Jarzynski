@@ -16,11 +16,18 @@ typedef struct GParam {
   double d_h[NCOLOR]; // parameters for the trace deformation
   double d_theta;
 	
-	// parallel tempering parameters
-	int d_defect_dir;				// defect boundary
-	int d_L_defect[STDIM-1];	// defect sizes
-	int d_N_replica_pt;		// numbers of replica used in parallel tempering
-	double* d_pt_bound_cond_coeff; // boundary conditions coefficients
+  // Jarzynski and parallel tempering parameters
+  int d_defect_dir;				// defect boundary
+  int d_L_defect[STDIM - 1];	// defect sizes
+
+  // parallel tempering parameters
+  int d_N_replica_pt;		// numbers of replica used in parallel tempering
+  double* d_pt_bound_cond_coeff; // boundary conditions coefficients
+
+  // Jarzynski parameters
+  int d_J_evolutions; // number of out-of-equilibrium evolutions
+  int d_J_relax;	// relax steps between evolutions
+  int d_J_steps;	// steps in each evolution
 	
 	// hierarchical update (parallel tempering)
 	int d_N_hierarc_levels; // number of hierarchical levels
@@ -97,9 +104,11 @@ void remove_white_line_and_comments(FILE *input);
 void readinput(char *in_file, GParam *param);
 void init_derived_constants(GParam *param);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tprof_f, GParam const * const param);
+void init_work_file(FILE **workfilep, GParam const * const param)
 void free_hierarc_params(GParam *param);
 void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_local_jarzynski(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end);

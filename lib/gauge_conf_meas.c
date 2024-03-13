@@ -1055,6 +1055,12 @@ void perform_measures_localobs(Gauge_Conf *GC,
    #endif
    }
 
+void print_work(int index, double work, FILE *workfilep)
+{
+	fprintf(workfilep, "%d %.16lf\n", index, work);
+	fflush(workfilep);
+}
+
 
 // perform local observables in the case of trace deformation, it computes all the order parameters
 void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,

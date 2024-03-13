@@ -68,6 +68,8 @@ void init_gauge_conf_replica(Gauge_Conf **GC,
 void init_bound_cond(Gauge_Conf *GC,
 										 GParam const * const param,
 										 int const a);
+void init_single_conf_bound_cond(Gauge_Conf *GC, GParam const * const param, double const Cval);
+void set_bound_cond(Gauge_Conf *GC,	GParam const * const param,	double const Cval);
 void free_replica(Gauge_Conf *GC,
 									GParam const * const param);
 void free_bound_cond(Gauge_Conf *GC,
@@ -220,6 +222,7 @@ void perform_measures_localobs(Gauge_Conf *GC,
                                Geometry const * const geo,
                                GParam const * const param,
                                FILE *datafilep, FILE *chiprimefilep, FILE*);
+void print_work(int index, double work, FILE *workfilep);
 void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,
                                              Geometry const * const geo,
                                              GParam const * const param,
@@ -394,10 +397,15 @@ void update_with_defect(Gauge_Conf * GC,
 												GParam const * const param);
 void update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
 											Rectangle const * const most_update, Rectangle const * const clover_rectangle);
+void single_conf_hierarchical_update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
+	int const hierarc_level, Rectangle const * const most_update,
+	Rectangle const * const clover_rectangle);
 void hierarchical_update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
 															int const hierarc_level, Rectangle const * const most_update,
 															Rectangle const * const clover_rectangle,
 															Rectangle const * const swap_rectangle, Acc_Utils *acc_counters);
+void single_conf_hierarchical_update(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
+	Rectangle const * const most_update, Rectangle const * const clover_rectangle);
 void parallel_tempering_with_hierarchical_update(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
 												 Rectangle const * const most_update, Rectangle const * const clover_rectangle,
 												 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters);
@@ -426,6 +434,7 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 				 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters);
 double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param,
                          long const r, int const i, int const j, int const a, int const b);
+double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param);
 void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double const p, Acc_Utils *acc_counters);
 void conf_translation(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param);	
 void init_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param);

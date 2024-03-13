@@ -157,6 +157,34 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
 	return delta;
 }
 
+double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param)
+{
+	double re_tr_plaq, K, act;
+
+	// for each value of defect_dir, determine the three orthogonal directions to it
+	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
+
+	act = 0.0;
+	for (r = 0; r < (param->d_volume); r++)
+		for (i = 0; i < STDIM - 1; i++)
+		{
+			// contribution to action of site r on plane (i,j)
+			j = perp_dir[param->d_defect_dir][i];
+
+			// plaquettes
+			re_tr_plaq = plaquettep(GC, geo, param, r, i, j); // (Re Tr plaq(r,i,j) )/N_c
+
+			// boundary conditions
+			K = (GC.C[r][i])*(GC.C[nnp(geo, r, i)][j])*(GC.C[nnp(geo, r, j)][i])*(GC.C[r][j]);
+
+			// d_action = beta * K * plaq
+			act += param->d_beta * K * re_tr_plaq;
+		}
+	}
+
+	return act;
+}
+
 // swaps are serial, evaluation of swap probability is parallelized (use this version of 'swap' if gcc_version < 6.0 or icc_version < 14.0)
 /*
 void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,

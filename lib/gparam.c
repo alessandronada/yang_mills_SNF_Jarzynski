@@ -85,6 +85,9 @@ void readinput(char *in_file, GParam *param)
 		param->d_L_defect[i]=0;
 		}
 		param->d_N_replica_pt=1;
+		param->d_J_evolutions = 0;
+		param->d_J_relax = 0;
+		param->d_J_steps = 0;
 		
 		// default = do not compute chi_prime
 		param->d_chi_prime_meas = 0;
@@ -539,6 +542,36 @@ void readinput(char *in_file, GParam *param)
 										param->d_pt_bound_cond_coeff[i]=temp_d;
 										}
                   }
+		   else if (strncmp(str, "num_Jar_ev", 10) == 0)
+		   {
+				err = fscanf(input, "%d", &temp_i);
+				if (err != 1)
+				{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+				}
+				param->d_J_evolutions = temp_i;
+		   }
+		   else if (strncmp(str, "num_Jar_steps", 13) == 0)
+		   {
+				err = fscanf(input, "%d", &temp_i);
+				if (err != 1)
+				{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+				}
+			param->d_J_steps = temp_i;
+		   }
+		   else if (strncmp(str, "num_Jar_relax", 13) == 0)
+			{
+			err = fscanf(input, "%d", &temp_i);
+			if (err != 1)
+			{
+				fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+			param->d_J_relax = temp_i;
+			}
            else if(strncmp(str, "swap_acc_file", 13)==0)
                   { 
                   err=fscanf(input, "%s", temp_str);
@@ -887,6 +920,26 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tprof_f, GPar
 		}
 }
 
+void init_work_file(FILE **workfilep, GParam const * const param)
+{
+	*workfilep = fopen(param->d_work_file, "r");
+	if (*workfilep != NULL) // file exists
+	{
+		fclose(*workfilep);
+		*workfilep = fopen(param->d_work_file, "a");
+	}
+	else
+	{
+		int i;
+		*workfilep = fopen(param->d_work_file, "w");
+		fprintf(*workfilep, "# %f ", param->d_beta);
+		fprintf(*workfilep, "%d ", STDIM);
+		for (i = 0; i < STDIM; i++) fprintf(*workfilep, "%d ", param->d_size[i]);
+		fprintf(*workfilep, "\n");
+	}
+	fflush(*workfilep);
+}
+
 // free allocated memory for hierarc update parameters
 void free_hierarc_params(GParam *param)
 	{
@@ -1160,6 +1213,98 @@ void print_parameters_local_pt(GParam const * const param, time_t time_start, ti
 
     fclose(fp);
     }
+
+void print_parameters_local_jarzynski(GParam const * const param, time_t time_start, time_t time_end)
+{
+	FILE *fp;
+	int i;
+	double diff_sec;
+
+	fp = fopen(param->d_log_file, "w");
+	fprintf(fp, "+---------------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for yang_mills_local_jarzynski |\n");
+	fprintf(fp, "+---------------------------------------------------+\n\n");
+
+#ifdef OPENMP_MODE
+	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
+#endif
+
+	fprintf(fp, "number of colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+
+	fprintf(fp, "lattice: %d", param->d_size[0]);
+	for (i = 1; i < STDIM; i++)
+	{
+		fprintf(fp, "x%d", param->d_size[i]);
+	}
+	fprintf(fp, "\n\n");
+
+	fprintf(fp, "defect dir: %d\n", param->d_defect_dir);
+	fprintf(fp, "defect: %d", param->d_L_defect[0]);
+	for (i = 1; i < STDIM - 1; i++)
+	{
+		fprintf(fp, "x%d", param->d_L_defect[i]);
+	}
+	fprintf(fp, "\n\n");
+	fprintf(fp, "number of out-of-equilibrium evolutions: %d\n", param->d_J_evolutions);
+	fprintf(fp, "number of out-of-equilibrium steps in each evolution: %d\n", param->d_J_steps);
+	fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_relax);
+	fprintf(fp, "number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	if (param->d_N_hierarc_levels > 0)
+	{
+		fprintf(fp, "extention of rectangles: ");
+		for (i = 0; i < param->d_N_hierarc_levels; i++)
+		{
+			fprintf(fp, "%d ", param->d_L_rect[i]);
+		}
+		fprintf(fp, "\n");
+		fprintf(fp, "number of sweeps per hierarchical level: ");
+		for (i = 0; i < param->d_N_hierarc_levels; i++)
+		{
+			fprintf(fp, "%d ", param->d_N_sweep_rect[i]);
+		}
+	}
+	fprintf(fp, "\n\n");
+
+	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+#ifdef THETA_MODE
+	fprintf(fp, "theta: %.10lf\n", param->d_theta);
+#endif
+	fprintf(fp, "\n");
+
+	fprintf(fp, "sample:    %d\n", param->d_sample);
+	fprintf(fp, "thermal:   %d\n", param->d_thermal);
+	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
+	fprintf(fp, "measevery: %d\n", param->d_measevery);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "start:                   %d\n", param->d_start);
+	fprintf(fp, "saveconf_back_every:     %d\n", param->d_saveconf_back_every);
+	fprintf(fp, "saveconf_analysis_every: %d\n", param->d_saveconf_analysis_every);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "coolsteps:      %d\n", param->d_coolsteps);
+	fprintf(fp, "coolrepeat:     %d\n", param->d_coolrepeat);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "randseed: %u\n", param->d_randseed);
+	fprintf(fp, "\n");
+
+	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec);
+	fprintf(fp, "\n");
+
+	if (endian() == 0)
+	{
+		fprintf(fp, "Little endian machine\n\n");
+	}
+	else
+	{
+		fprintf(fp, "Big endian machine\n\n");
+	}
+
+	fclose(fp);
+}
 
 // print simulation parameters
 void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end)

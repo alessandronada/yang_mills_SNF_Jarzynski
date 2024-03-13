@@ -1287,6 +1287,31 @@ void update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GP
 
 	}
 
+// perform a hierarchical update on all rectangles on a single configuration
+void single_conf_hierarchical_update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
+														 int const hierarc_level, 
+														 Rectangle const * const most_update,
+														 Rectangle const * const clover_rectangle)
+{
+	int j;
+	if(hierarc_level==((param->d_N_hierarc_levels)-1))
+	{
+		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++) 
+		{
+			update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]) );
+	    }
+	} // end if
+	else
+	{
+		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++)
+		{
+			update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]) );
+			single_conf_hierarchical_update_rectangle_with_defect(GC,geo,param,(hierarc_level+1),most_update,clover_rectangle);
+		}
+	} // end else
+
+}
+
 // perform a hierarchical update on all rectangles
 void hierarchical_update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
 														 int const hierarc_level, 
@@ -1318,6 +1343,21 @@ void hierarchical_update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * 
 
 	}
 	
+// perform a single step of parallel tempering with hierarchical update
+void single_conf_hierarchical_update(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
+	Rectangle const * const most_update, Rectangle const * const clover_rectangle)
+{
+	int i;
+	int start_hierarc = 0; // first hierarc level is  0
+
+	// full update + hierarchical update + swaps and translations after every sweep
+	update_with_defect(GC, geo, param);
+	if (param->d_N_hierarc_levels > 0)
+		hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, most_update, clover_rectangle, swap_rectangle, acc_counters);
+
+	GC.update_index++;
+}
+
 // perform a single step of parallel tempering with hierarchical update
 void parallel_tempering_with_hierarchical_update(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
 												 Rectangle const * const most_update, Rectangle const * const clover_rectangle,

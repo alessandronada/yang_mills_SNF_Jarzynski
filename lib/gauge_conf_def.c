@@ -177,6 +177,69 @@ void init_bound_cond(Gauge_Conf *GC, GParam const * const param, int const i)
 	}
   }
 
+// initialize the defect of a configuration with a specific value of C
+void init_single_conf_bound_cond(Gauge_Conf *GC, GParam const * const param, double const Cval)
+{
+	long r;
+	int err;
+
+	//allocation of C[r][j]
+	err = posix_memalign((void**) &(GC->C), (size_t)DOUBLE_ALIGN, (size_t)param->d_volume * sizeof(double *));
+	if (err != 0)
+	{
+		fprintf(stderr, "Problems in allocating the defect! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	for (r = 0; r < (param->d_volume); r++)
+	{
+		err = posix_memalign((void**) &(GC->C[r]), (size_t)DOUBLE_ALIGN, (size_t)STDIM * sizeof(double));
+		if (err != 0)
+		{
+			fprintf(stderr, "Problems in allocating the defect! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	set_bound_cond(GC, &param, Cval);
+}
+
+// set the defect of a configuration with a specific value of C
+void set_bound_cond(Gauge_Conf *GC, GParam const * const param, double const Cval)
+{
+	const int TRUE = 1;
+	const int FALSE = 0;
+	long r;
+	int j, is_on_defect;
+	int cartcoord[STDIM];
+
+	// for each value of defect_dir, determine the three orthogonal directions to it
+	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
+
+	// initialization of C[r][j]
+
+	// start initializing them to 1
+	for (r = 0; r < param->d_volume; r++)
+		for (j = 0; j < STDIM; j++)
+		{
+			GC->C[r][j] = 1.0;
+		}
+
+	j = param->d_defect_dir;
+	for (r = 0; r < param->d_volume; r++)
+	{
+		// check if r is on the defect or not
+		si_to_cart(cartcoord, r, param);
+		if ((cartcoord[param->d_defect_dir] == ((param->d_size[param->d_defect_dir]) - 1)) &&
+			(cartcoord[perp_dir[param->d_defect_dir][0]] < (param->d_L_defect[0])) &&
+			(cartcoord[perp_dir[param->d_defect_dir][1]] < (param->d_L_defect[1])) &&
+			(cartcoord[perp_dir[param->d_defect_dir][2]] < (param->d_L_defect[2]))) is_on_defect = TRUE;
+		else is_on_defect = FALSE;
+
+		// if r is on defect assign bound cond
+		if (is_on_defect == TRUE) { GC->C[r][j] = param->Cval; }
+	}
+}
+
 void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
   {
   FILE *fp;
@@ -477,6 +540,24 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
 
   GC->update_index=GC2->update_index;
   }
+
+// allocate GC and initialize with GC2
+void copy_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC2, GParam const * const param)
+{
+	long r;
+	int mu, err;
+
+	// initialize GC
+	for (r = 0; r < (param->d_volume); r++)
+	{
+		for (mu = 0; mu < STDIM; mu++)
+		{
+			equal(&(GC->lattice[r][mu]), &(GC2->lattice[r][mu]));
+		}
+	}
+
+	GC->update_index = GC2->update_index;
+}
 
 
 // compute the md5sum of the configuration and save it in res, that is a char[2*MD5_DIGEST_LENGTH]
