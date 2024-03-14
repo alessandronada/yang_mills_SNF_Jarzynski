@@ -200,7 +200,7 @@ void init_single_conf_bound_cond(Gauge_Conf *GC, GParam const * const param, dou
 		}
 	}
 
-	set_bound_cond(GC, &param, Cval);
+	set_bound_cond(GC, param, Cval);
 }
 
 // set the defect of a configuration with a specific value of C
@@ -236,7 +236,7 @@ void set_bound_cond(Gauge_Conf *GC, GParam const * const param, double const Cva
 		else is_on_defect = FALSE;
 
 		// if r is on defect assign bound cond
-		if (is_on_defect == TRUE) { GC->C[r][j] = param->Cval; }
+		if (is_on_defect == TRUE) { GC->C[r][j] = Cval; }
 	}
 }
 

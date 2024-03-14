@@ -1353,9 +1353,9 @@ void single_conf_hierarchical_update(Gauge_Conf *GC, Geometry const * const geo,
 	// full update + hierarchical update + swaps and translations after every sweep
 	update_with_defect(GC, geo, param);
 	if (param->d_N_hierarc_levels > 0)
-		hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, most_update, clover_rectangle, swap_rectangle, acc_counters);
+		single_conf_hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, most_update, clover_rectangle);
 
-	GC.update_index++;
+	GC->update_index++;
 }
 
 // perform a single step of parallel tempering with hierarchical update

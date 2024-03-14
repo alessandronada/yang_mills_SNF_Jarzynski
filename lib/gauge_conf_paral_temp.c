@@ -159,6 +159,7 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
 
 double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param)
 {
+	int r, i, j;
 	double re_tr_plaq, K, act;
 
 	// for each value of defect_dir, determine the three orthogonal directions to it
@@ -175,12 +176,11 @@ double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const
 			re_tr_plaq = plaquettep(GC, geo, param, r, i, j); // (Re Tr plaq(r,i,j) )/N_c
 
 			// boundary conditions
-			K = (GC.C[r][i])*(GC.C[nnp(geo, r, i)][j])*(GC.C[nnp(geo, r, j)][i])*(GC.C[r][j]);
+			K = (GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]);
 
 			// d_action = beta * K * plaq
 			act += param->d_beta * K * re_tr_plaq;
 		}
-	}
 
 	return act;
 }

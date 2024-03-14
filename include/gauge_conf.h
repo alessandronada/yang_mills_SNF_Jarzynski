@@ -61,6 +61,7 @@ typedef struct Acc_Utils {
 // in gauge_conf_def.c
 void init_gauge_conf_from_file_with_name(Gauge_Conf *GC,
                      GParam const * const param, char const * const filename);
+void copy_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC2, GParam const * const param);
 void init_gauge_conf(Gauge_Conf *GC,
                      GParam const * const param);
 void init_gauge_conf_replica(Gauge_Conf **GC,

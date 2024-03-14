@@ -27,7 +27,7 @@ void real_main(char *in_file)
 	double W = 0.0, newC = 0.0, oldC = 0.0;
 
     char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-    int count, rel;
+    int count, rel, step;
     FILE *datafilep, *chiprimefilep,  *topchar_tprof_filep, *workfilep;
     time_t time1, time2;
 
@@ -66,7 +66,7 @@ void real_main(char *in_file)
 
 	for (count = 0; count < param.d_thermal; count++)
 	{
-		single_conf_hierarchic_update(GC, &geo, &param, most_update, clover_rectangle);
+		single_conf_hierarchical_update(&GC, &geo, &param, most_update, clover_rectangle);
 	}
 
     for (count=0; count < param.d_J_evolutions; count++)
@@ -75,11 +75,11 @@ void real_main(char *in_file)
 		newC = 0.0;
 		oldC = 0.0;
 
-		set_bound_cond(GC, &param, newC);
+		set_bound_cond(&GC, &param, newC);
 
 		// updates between the start of each evolution
 		for (rel = 0; rel < param.d_J_relax; rel++)
-			single_conf_hierarchic_update(GC, &geo, &param, most_update, clover_rectangle);
+			single_conf_hierarchical_update(&GC, &geo, &param, most_update, clover_rectangle);
 
 		// store the starting configuration of the evolution
 		copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
@@ -89,16 +89,16 @@ void real_main(char *in_file)
 		{
 			//change bc on defect and compute work
 			oldC = newC;
-			newC = protocolC[step];
-			W -= compute_defect_action(GC, &geo, &param);
-			set_bound_cond(GC, &param, newC);
-			W += compute_defect_action(GC, &geo, &param);
+			newC = oldC + 1.0/param.d_J_steps;
+			W -= compute_defect_action(&GC, &geo, &param);
+			set_bound_cond(&GC, &param, newC);
+			W += compute_defect_action(&GC, &geo, &param);
 			// perform a single step of hierarchic updates with new defect
-			single_conf_hierarchic_update(GC, &geo, &param, most_update, clover_rectangle);
+			single_conf_hierarchical_update(&GC, &geo, &param, most_update, clover_rectangle);
 		}
 
 		// perform measures only on homogeneous configuration
-		perform_measures_localobs(GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+		perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 		print_work(count, W, workfilep);
 
 		// recover the starting configuration of the evolution
@@ -142,14 +142,14 @@ void real_main(char *in_file)
     // save configurations
     if(param.d_saveconf_back_every!=0)
       {
-      write_replica_on_file(GC, &param);
+      write_replica_on_file(&GC, &param);
       }
 
     // print simulation details
     print_parameters_local_jarzynski(&param, time1, time2);
 
     // free gauge configurations
-    free_replica(GC, &param);
+    free_replica(&GC, &param);
 
     // free geometry
     free_geometry(&geo, &param);

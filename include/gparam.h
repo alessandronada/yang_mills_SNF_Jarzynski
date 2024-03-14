@@ -73,6 +73,7 @@ typedef struct GParam {
   // output file names
   char d_conf_file[STD_STRING_LENGTH];
   char d_data_file[STD_STRING_LENGTH];
+  char d_work_file[STD_STRING_LENGTH];
 	char d_chiprime_file[STD_STRING_LENGTH]; // print chi prime measures
 	char d_topcharge_tprof_file[STD_STRING_LENGTH]; // print topological charge time correlator measures
   char d_log_file[STD_STRING_LENGTH];
@@ -104,7 +105,7 @@ void remove_white_line_and_comments(FILE *input);
 void readinput(char *in_file, GParam *param);
 void init_derived_constants(GParam *param);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tprof_f, GParam const * const param);
-void init_work_file(FILE **workfilep, GParam const * const param)
+void init_work_file(FILE **workfilep, GParam const * const param);
 void free_hierarc_params(GParam *param);
 void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
