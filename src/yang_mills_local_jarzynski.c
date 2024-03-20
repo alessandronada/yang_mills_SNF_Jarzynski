@@ -140,16 +140,19 @@ void real_main(char *in_file)
 		if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
 
     // save configurations
-    if(param.d_saveconf_back_every!=0)
-      {
-      write_replica_on_file(&GC, &param);
-      }
+    //if(param.d_saveconf_back_every!=0)
+    //  {
+    //  write_replica_on_file(&GC, &param);
+    //  }
 
     // print simulation details
     print_parameters_local_jarzynski(&param, time1, time2);
 
     // free gauge configurations
-    free_replica(&GC, &param);
+    free_gauge_conf(&GC, &param);
+    free_bound_cond(&GC, &param);
+    free_gauge_conf(&GCstart, &param);
+    free_bound_cond(&GCstart, &param);
 
     // free geometry
     free_geometry(&geo, &param);
@@ -183,7 +186,7 @@ void print_template_input(void)
 		fprintf(fp,"N_replica_pt  2    0.0 1.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
 		fprintf(fp,"\n");
 		fprintf(fp,"# hierarchical update parameters\n");
-		fprintf(fp,"# Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
+		fprintf(fp,"# Ord:qer: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
 		fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
 		fprintf(fp,"\n");
 		fprintf(fp,"# Simulations parameters\n");

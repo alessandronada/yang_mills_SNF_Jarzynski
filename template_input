@@ -5,6 +5,11 @@ defect_dir    1                # choose direction of defect boundary: 0->t, 1->x
 defect_size   1 1 1            # defect sizes along dirs orthogonal to <defect_dir>, ordered from 0 to 3 (skipping the <defect_dir> direction)
 N_replica_pt  1   1.0          # number of parallel tempering replica ___ boundary conditions coefficients
 
+# out-of-equilibrium evolutions parameters
+num_jar_ev      10
+num_jar_relax   1
+num_jar_steps   10
+
 # hierarchical update parameters (ONLY PARALLEL TEMPERING RUNS): num of hierarc levels ___ extension of rectangles ___ num of sweeps per rectangle
 hierarc_upd 0
 
@@ -35,6 +40,7 @@ topcharge_tprof_meas  1   # 1=YES, 0=NO (YES = compute topcharge_tprof, NO = do 
 # output files
 conf_file                conf.dat
 data_file                dati.dat
+work_file                work.dat
 chiprime_data_file       chi_prime_cool.dat   # chi_prime cool measures are written here only if chi_prime_meas==1
 topcharge_tprof_file     topo_tprof_cool.dat  # topcharge_tprof cool measures are written here only if topcharge_tprof_meas==1
 log_file                 log.dat
