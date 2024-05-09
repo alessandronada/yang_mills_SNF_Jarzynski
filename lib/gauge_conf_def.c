@@ -437,6 +437,24 @@ void write_conf_on_file(Gauge_Conf const * const GC, GParam const * const param)
   write_conf_on_file_with_name(GC, param, param->d_conf_file);
   }
 
+void write_evolution_conf_on_file(Gauge_Conf const* const GC, GParam const* const param, int evolution, int obc)
+{
+    int i;
+
+#ifdef OPENMP_MODE
+#pragma omp parallel for num_threads(NTHREADS) private(i)
+#endif	
+    char filename[STD_STRING_LENGTH], evolution_index[STD_STRING_LENGTH];
+    strcpy(filename, param->d_conf_file);
+    if (obc != 0)
+        strcat(filename, "_OBC_ev_");
+    else
+        strcat(filename, "_PBC_ev_");
+    sprintf(evolution_index, "%d", evolution);
+    strcat(filename, evolution_index); // filename = d_conf_file + "_O(P)BC_ev_${i}"
+    write_conf_on_file_with_name(&(GC[0]), param, filename);
+}
+
 void write_replica_on_file(Gauge_Conf const * const GC, GParam const * const param)
 	{
 	int i;

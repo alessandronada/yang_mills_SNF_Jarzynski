@@ -101,33 +101,18 @@ void real_main(char *in_file)
 		perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 		print_work(count, W, workfilep);
 
+        // save OBC and PBC configurations
+        if (param.d_saveconf_back_every != 0)
+        {
+            if (count % param.d_saveconf_back_every == 0)
+            {
+                write_evolution_conf_on_file(&GCstart, &param, count, 0);
+                write_evolution_conf_on_file(&GC, &param, count, 1);
+            }
+        }
+
 		// recover the starting configuration of the evolution
 		copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
-
-  //     // save configurations for backup
-  //     if(param.d_saveconf_back_every!=0)
-		//{
-		//	if(GC[0].update_index % param.d_saveconf_back_every == 0 )
-		//	{
-		//		// simple
-		//		write_replica_on_file(GC, &param);
-		//		// backup copy
-		//		write_replica_on_file_back(GC, &param);
-  //         }
-  //       }
-
-  //     // save homogeneous configuration for offline analysis
-  //     if(param.d_saveconf_analysis_every!=0)
-  //       {
-  //       if(GC[0].update_index % param.d_saveconf_analysis_every == 0 )
-  //         {
-  //         strcpy(name, param.d_conf_file);
-		//			 strcat(name, "_step_");
-  //         sprintf(aux, "%ld", GC[0].update_index);
-  //         strcat(name, aux);
-  //         write_conf_on_file_with_name(&(GC[0]), &param, name);
-  //         }
-  //       }
     }
 
     time(&time2);
@@ -139,11 +124,9 @@ void real_main(char *in_file)
 		if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
 		if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
 
-    // save configurations
-    //if(param.d_saveconf_back_every!=0)
-    //  {
-    //  write_replica_on_file(&GC, &param);
-    //  }
+    // save last OBC configuration
+    if (param.d_saveconf_back_every != 0)
+        write_evolution_conf_on_file(&GC, &param, count, 1);
 
     // print simulation details
     print_parameters_local_jarzynski(&param, time1, time2);
