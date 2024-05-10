@@ -101,18 +101,21 @@ void real_main(char *in_file)
 		perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 		print_work(count, W, workfilep);
 
+
         // save OBC and PBC configurations
         if (param.d_saveconf_back_every != 0)
         {
             if (count % param.d_saveconf_back_every == 0)
             {
-                write_evolution_conf_on_file(&GCstart, &param, count, 0);
-                write_evolution_conf_on_file(&GC, &param, count, 1);
+                write_evolution_conf_on_file(&GCstart, &param, 0);
+                write_evolution_conf_on_file(&GC, &param, 1);
             }
         }
 
 		// recover the starting configuration of the evolution
 		copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
+
+                GC.evolution_index++;
     }
 
     time(&time2);
@@ -126,7 +129,7 @@ void real_main(char *in_file)
 
     // save last OBC configuration
     if (param.d_saveconf_back_every != 0)
-        write_evolution_conf_on_file(&GC, &param, count, 1);
+        write_conf_on_file(&GC, &param);
 
     // print simulation details
     print_parameters_local_jarzynski(&param, time1, time2);
