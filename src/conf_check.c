@@ -41,7 +41,7 @@ void getspacetimedim(char *infile, int *dim)
 void getsizeandhash(char *infile, int *sides, char *hash)
     {
     FILE *fp;
-    long update_index;
+    long update_index, evolution_index;
     int dim, err, i;
 
     fp=fopen(infile, "r");
@@ -69,8 +69,8 @@ void getsizeandhash(char *infile, int *sides, char *hash)
            }
          }
 
-      err=fscanf(fp, "%ld %s", &update_index, hash);
-      if(err!=2)
+      err=fscanf(fp, "%ld %ld %s", &update_index, &evolution_index, hash);
+      if(err!=3)
         {
         fprintf(stderr, "Error in reading the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
         exit(EXIT_FAILURE);
