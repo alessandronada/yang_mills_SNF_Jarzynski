@@ -69,6 +69,7 @@ void real_main(char *in_file)
 		single_conf_hierarchical_update(&GC, &geo, &param, most_update, clover_rectangle);
 	}
 
+    // loop on evolutions
     for (count=0; count < param.d_J_evolutions; count++)
 	{
 		W = 0.0;
@@ -79,7 +80,7 @@ void real_main(char *in_file)
 
 		// updates between the start of each evolution
 		for (rel = 0; rel < param.d_J_relax; rel++)
-			single_conf_hierarchical_update(&GC, &geo, &param, most_update, clover_rectangle);
+            single_conf_hierarchical_update(&GC, &geo, &param, most_update, clover_rectangle);
 
 		// store the starting configuration of the evolution
 		copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
@@ -97,15 +98,14 @@ void real_main(char *in_file)
 			single_conf_hierarchical_update(&GC, &geo, &param, most_update, clover_rectangle);
 		}
 
-		// perform measures only on homogeneous configuration
+		// perform measures only on PBC configuration
 		perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 		print_work(count, W, workfilep);
 
-
-        // save OBC and PBC configurations
-        if (param.d_saveconf_back_every != 0)
+        // save initial (OBC) and final (PBC) configurations for offline analysis
+        if (param.d_saveconf_analysis_every != 0)
         {
-            if (count % param.d_saveconf_back_every == 0)
+            if (count % param.d_saveconf_analysis_every == 0)
             {
                 write_evolution_conf_on_file(&GCstart, &param, 0);
                 write_evolution_conf_on_file(&GC, &param, 1);
@@ -115,7 +115,19 @@ void real_main(char *in_file)
 		// recover the starting configuration of the evolution
 		copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
 
-                GC.evolution_index++;
+        GC.evolution_index++;
+
+        // save initial OBC configuration for backup
+        if (param.d_saveconf_back_every != 0)
+        {
+            if (count % param.d_saveconf_back_every == 0)
+            {
+                // simple
+                write_conf_on_file(&GC, &param);
+                // backup copy
+                write_conf_on_file_back(&GC, &param);
+            }
+        }
     }
 
     time(&time2);
@@ -124,12 +136,14 @@ void real_main(char *in_file)
     // close data file
     fclose(datafilep);
 	fclose(workfilep);
-		if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
-		if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
+	if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
+	if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
 
     // save last OBC configuration
     if (param.d_saveconf_back_every != 0)
+    {
         write_conf_on_file(&GC, &param);
+    }
 
     // print simulation details
     print_parameters_local_jarzynski(&param, time1, time2);
