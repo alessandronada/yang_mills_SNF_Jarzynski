@@ -178,8 +178,8 @@ double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const
 			// boundary conditions
 			K = (GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]);
 
-			// d_action = beta * K * plaq
-			act += param->d_beta * K * re_tr_plaq;
+			// d_action = - beta * K * plaq
+			act += - param->d_beta * K * re_tr_plaq;
 		}
 
 	return act;
