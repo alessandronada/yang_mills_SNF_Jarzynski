@@ -82,6 +82,9 @@ void real_main(char *in_file)
 		for (rel = 0; rel < param.d_J_relax; rel++)
             single_conf_hierarchical_update(&GC, &geo, &param, most_update, clover_rectangle);
 
+        // increase the index of evolutions
+        GC.evolution_index++;
+
 		// store the starting configuration of the evolution
 		copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
 
@@ -114,8 +117,6 @@ void real_main(char *in_file)
 
 		// recover the starting configuration of the evolution
 		copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
-
-        GC.evolution_index++;
 
         // save initial OBC configuration for backup
         if (param.d_saveconf_back_every != 0)
