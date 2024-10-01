@@ -14,7 +14,8 @@ bin_PROGRAMS = conf_check \
                yang_mills_tube_disc \
                yang_mills_tracedef \
                yang_mills_local_pt \
-	       yang_mills_local_jarzynski \
+	       yang_mills_local_jarzynski_bc \
+	       yang_mills_local_jarzynski_beta \
 							 yang_mills_local_pt_multicanonic \
 							 yang_mills_gradient_flow 
 
@@ -285,7 +286,22 @@ yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
                           $(tens_prod) \
                           $(u1)
 
-yang_mills_local_jarzynski_SOURCES=./src/yang_mills_local_jarzynski.c \
+yang_mills_local_jarzynski_bc_SOURCES=./src/yang_mills_local_jarzynski_bc.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_jarzynski_beta_SOURCES=./src/yang_mills_local_jarzynski_beta.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \

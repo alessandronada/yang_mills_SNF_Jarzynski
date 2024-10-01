@@ -2,8 +2,8 @@
 
 NCOLORS=3
 NTHREADS=1
-compile_targets='yang_mills_local_jarzynski'
-#'yang_mills_local yang_mills_local_pt yang_mills_local_pt_multicanonic conf_check yang_mills_t0 yang_mills_gradient_flow yang_mills_local_jarzynski'
+compile_targets='yang_mills_local_jarzynski_bc yang_mills_local_jarzynski_beta'
+#'yang_mills_local yang_mills_local_pt yang_mills_local_pt_multicanonic conf_check yang_mills_t0 yang_mills_gradient_flow yang_mills_local_jarzynski_bc yang_mills_local_jarzynski_beta'
 
 # 1=yes, 0=no
 ENABLE_THETA=0

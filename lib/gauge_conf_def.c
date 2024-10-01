@@ -50,6 +50,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
     one(&aux1);
 
     GC->update_index=0;
+    GC->evolution_index=0;
 
     for(r=0; r<(param->d_volume); r++)
        {
@@ -68,6 +69,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
     GAUGE_GROUP aux1;
 
     GC->update_index=0;
+    GC->evolution_index=0;
 
     for(r=0; r<(param->d_volume); r++)
        {
@@ -290,8 +292,8 @@ void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
          }
        }
 
-    err=fscanf(fp, "%ld %s\n", &(GC->update_index), md5sum_old);
-    if(err!=2)
+    err=fscanf(fp, "%ld %ld %s\n", &(GC->update_index), &(GC->evolution_index), md5sum_old);
+    if(err!=3)
       {
       fprintf(stderr, "Error in reading the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
       exit(EXIT_FAILURE);
@@ -407,7 +409,7 @@ void write_conf_on_file_with_name(Gauge_Conf const * const GC,
        {
        fprintf(fp, "%d ", param->d_size[i]);
        }
-    fprintf(fp, "%ld %s\n", GC->update_index, md5sum);
+    fprintf(fp, "%ld %ld %s\n", GC->update_index, GC->evolution_index, md5sum);
     }
   fclose(fp);
 
@@ -437,22 +439,17 @@ void write_conf_on_file(Gauge_Conf const * const GC, GParam const * const param)
   write_conf_on_file_with_name(GC, param, param->d_conf_file);
   }
 
-void write_evolution_conf_on_file(Gauge_Conf const* const GC, GParam const* const param, int evolution, int obc)
-{
-    int i;
-
-#ifdef OPENMP_MODE
-#pragma omp parallel for num_threads(NTHREADS) private(i)
-#endif	
+void write_evolution_conf_on_file(Gauge_Conf const* const GC, GParam const* const param, int obc)
+{	
     char filename[STD_STRING_LENGTH], evolution_index[STD_STRING_LENGTH];
     strcpy(filename, param->d_conf_file);
     if (obc != 0)
-        strcat(filename, "_OBC_ev_");
+        strcat(filename, "_ev_");
     else
         strcat(filename, "_PBC_ev_");
-    sprintf(evolution_index, "%d", evolution);
-    strcat(filename, evolution_index); // filename = d_conf_file + "_O(P)BC_ev_${i}"
-    write_conf_on_file_with_name(&(GC[0]), param, filename);
+    sprintf(evolution_index, "%ld", GC->evolution_index);
+    strcat(filename, evolution_index); // filename = d_conf_file + "_ev_${i}"
+    write_conf_on_file_with_name(GC, param, filename);
 }
 
 void write_replica_on_file(Gauge_Conf const * const GC, GParam const * const param)
@@ -557,6 +554,7 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
      }
 
   GC->update_index=GC2->update_index;
+  GC->evolution_index=GC2->evolution_index;
   }
 
 // allocate GC and initialize with GC2
@@ -575,6 +573,7 @@ void copy_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
 	}
 
 	GC->update_index = GC2->update_index;
+	GC->evolution_index=GC2->evolution_index;
 }
 
 
