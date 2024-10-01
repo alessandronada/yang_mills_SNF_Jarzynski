@@ -28,6 +28,8 @@ typedef struct GParam {
   int d_J_evolutions; // number of out-of-equilibrium evolutions
   int d_J_relax;	// relax steps between evolutions
   int d_J_steps;	// steps in each evolution
+  int d_J_dmeas;	// steps between each measurement during evolution
+  double d_J_beta_target;     // target beta, only for evolutions in beta
 	
 	// hierarchical update (parallel tempering)
 	int d_N_hierarc_levels; // number of hierarchical levels

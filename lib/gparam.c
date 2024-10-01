@@ -88,6 +88,8 @@ void readinput(char *in_file, GParam *param)
 		param->d_J_evolutions = 0;
 		param->d_J_relax = 0;
 		param->d_J_steps = 0;
+        param->d_J_dmeas = 0;
+        param->d_J_beta_target = 6.0;
 		
 		// default = do not compute chi_prime
 		param->d_chi_prime_meas = 0;
@@ -552,6 +554,16 @@ void readinput(char *in_file, GParam *param)
 										param->d_pt_bound_cond_coeff[i]=temp_d;
 										}
                   }
+           else if (strncmp(str, "beta_target", 11) == 0)
+           {
+                  err = fscanf(input, "%lf", &temp_d);
+                  if (err != 1)
+                  {
+                      fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+                      exit(EXIT_FAILURE);
+                  }
+                  param->d_J_beta_target = temp_d;
+           }
 		   else if (strncmp(str, "num_Jar_ev", 10) == 0)
 		   {
 				err = fscanf(input, "%d", &temp_i);
@@ -582,6 +594,16 @@ void readinput(char *in_file, GParam *param)
 			}
 			param->d_J_relax = temp_i;
 			}
+           else if (strncmp(str, "num_Jar_dmeas", 13) == 0)
+            {
+            err = fscanf(input, "%d", &temp_i);
+            if (err != 1)
+            {
+                fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            param->d_J_dmeas = temp_i;
+            }
            else if(strncmp(str, "swap_acc_file", 13)==0)
                   { 
                   err=fscanf(input, "%s", temp_str);
@@ -1259,6 +1281,7 @@ void print_parameters_local_jarzynski(GParam const * const param, time_t time_st
 	fprintf(fp, "number of out-of-equilibrium evolutions: %d\n", param->d_J_evolutions);
 	fprintf(fp, "number of out-of-equilibrium steps in each evolution: %d\n", param->d_J_steps);
 	fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_relax);
+    fprintf(fp, "number of steps between measurements during evolution: %d\n", param->d_J_dmeas);
 	fprintf(fp, "number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
 	if (param->d_N_hierarc_levels > 0)
 	{
@@ -1277,6 +1300,7 @@ void print_parameters_local_jarzynski(GParam const * const param, time_t time_st
 	fprintf(fp, "\n\n");
 
 	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+    fprintf(fp, "beta target: %.10lf\n", param->d_J_beta_target);
 #ifdef THETA_MODE
 	fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
