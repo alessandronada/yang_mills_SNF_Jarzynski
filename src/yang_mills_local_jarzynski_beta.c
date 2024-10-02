@@ -98,8 +98,8 @@ void real_main(char *in_file)
             param.d_beta = param.d_beta + dbeta;
             plaquette(&GC, &geo, &param, &plaqs, &plaqt);
             act = 1 - 0.5 * (plaqs + plaqt);
-            act *= ((double)STDIM - 1) / param.d_inv_vol;
-			W += param.d_beta * act;
+            act *= 6 / param.d_inv_vol;
+			W += dbeta * act;
 			// perform a single step of updates with new beta
             update(&GC, &geo, &param);
 
