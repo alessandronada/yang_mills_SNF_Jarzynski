@@ -564,7 +564,7 @@ void readinput(char *in_file, GParam *param)
                   }
                   param->d_J_beta_target = temp_d;
            }
-		   else if (strncmp(str, "num_Jar_ev", 10) == 0)
+		   else if (strncmp(str, "num_jar_ev", 10) == 0)
 		   {
 				err = fscanf(input, "%d", &temp_i);
 				if (err != 1)
@@ -574,7 +574,7 @@ void readinput(char *in_file, GParam *param)
 				}
 				param->d_J_evolutions = temp_i;
 		   }
-		   else if (strncmp(str, "num_Jar_steps", 13) == 0)
+		   else if (strncmp(str, "num_jar_steps", 13) == 0)
 		   {
 				err = fscanf(input, "%d", &temp_i);
 				if (err != 1)
@@ -584,7 +584,7 @@ void readinput(char *in_file, GParam *param)
 				}
 			param->d_J_steps = temp_i;
 		   }
-		   else if (strncmp(str, "num_Jar_relax", 13) == 0)
+		   else if (strncmp(str, "num_jar_relax", 13) == 0)
 			{
 			err = fscanf(input, "%d", &temp_i);
 			if (err != 1)
@@ -594,7 +594,7 @@ void readinput(char *in_file, GParam *param)
 			}
 			param->d_J_relax = temp_i;
 			}
-           else if (strncmp(str, "num_Jar_dmeas", 13) == 0)
+           else if (strncmp(str, "num_jar_dmeas", 13) == 0)
             {
             err = fscanf(input, "%d", &temp_i);
             if (err != 1)
