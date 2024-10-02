@@ -554,7 +554,7 @@ void readinput(char *in_file, GParam *param)
 										param->d_pt_bound_cond_coeff[i]=temp_d;
 										}
                   }
-           else if (strncmp(str, "beta_target", 11) == 0)
+           else if (strncmp(str, "jar_beta_target", 15) == 0)
            {
                   err = fscanf(input, "%lf", &temp_d);
                   if (err != 1)

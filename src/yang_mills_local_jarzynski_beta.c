@@ -19,12 +19,11 @@
 #include"../include/random.h"
 
 void real_main(char *in_file)
-	{
+{
     Gauge_Conf GC, GCstart;
     Geometry geo;
     GParam param;
-	//Rectangle *most_update, *clover_rectangle;
-	double W = 0.0, beta0 = 0.0, dbeta = 0.0, act = 0.0, plaqs, plaqt;
+    double W = 0.0, beta0 = 0.0, dbeta = 0.0, act = 0.0, plaqs, plaqt;
 
     char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
     int count, rel, step;
@@ -34,7 +33,7 @@ void real_main(char *in_file)
     // to disable nested parallelism
     #ifdef OPENMP_MODE
       // omp_set_nested(0); // deprecated
-			omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
+	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
     #endif
 
     // read input file
@@ -45,7 +44,7 @@ void real_main(char *in_file)
 
     // open data_file
     init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
-	init_work_file(&workfilep, &param);
+    init_work_file(&workfilep, &param);
 
     // initialize geometry
     init_indexing_lexeo();
@@ -58,61 +57,55 @@ void real_main(char *in_file)
     init_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
     init_single_conf_bound_cond(&GCstart, &param, 0.0);
 
-    // initialize rectangles for hierarchical update
-    // init_rect_hierarc(&most_update, &clover_rectangle, &param);
-
     // Monte Carlo begin
     time(&time1);
+    beta0 = param.d_beta;
+    dbeta = (param.d_J_beta_target - param.d_beta) / param.d_J_steps;
 
-	for (count = 0; count < param.d_thermal; count++)
-	{
+    for (count = 0; count < param.d_thermal; count++)
+    {
         update(&GC, &geo, &param);
-	}
+    }
 
     // loop on evolutions
     for (count=0; count < param.d_J_evolutions; count++)
-	{
-		W = 0.0;
-        beta0 = param.d_beta;
-        dbeta = (param.d_J_beta_target - param.d_beta) / param.d_J_steps;
-		//newC = 0.0;
-		//oldC = 0.0;
-
-		//set_bound_cond(&GC, &param, newC);
+    {
+        W = 0.0;
         param.d_beta = beta0;
 
-		// updates between the start of each evolution
-		for (rel = 0; rel < param.d_J_relax; rel++)
+	// updates between the start of each evolution
+	for (rel = 0; rel < param.d_J_relax; rel++)
             update(&GC, &geo, &param);
 
         // increase the index of evolutions
         GC.evolution_index++;
 
-		// store the starting configuration of the evolution
-		copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
+	// store the starting configuration of the evolution
+	copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
 
-		// non-equilibrium evolution
-		for (step = 0; step < param.d_J_steps; step++)
-		{
+	// non-equilibrium evolution
+	for (step = 0; step < param.d_J_steps; step++)
+	{
             //change beta and compute work
             param.d_beta = param.d_beta + dbeta;
             plaquette(&GC, &geo, &param, &plaqs, &plaqt);
             act = 1 - 0.5 * (plaqs + plaqt);
             act *= 6 / param.d_inv_vol;
-			W += dbeta * act;
-			// perform a single step of updates with new beta
+	    W += dbeta * act;
+	    
+	    // perform a single step of updates with new beta
             update(&GC, &geo, &param);
 
-            if ((step + 1) % param.d_J_dmeas == 0)
+            if ((step + 1) % param.d_J_dmeas == 0 && step != (param.d_J_steps - 1))
             {
                 perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
                 print_work(count, W, workfilep);
             }
-		}
+	}
 
-		// perform measures only on PBC configuration
-		perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
-		print_work(count, W, workfilep);
+	// perform measures only on PBC configuration
+	perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+	print_work(count, W, workfilep);
 
         // save initial (OBC) and final (PBC) configurations for offline analysis
         if (param.d_saveconf_analysis_every != 0)
@@ -124,8 +117,8 @@ void real_main(char *in_file)
             }
         }
 
-		// recover the starting configuration of the evolution
-		copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
+	// recover the starting configuration of the evolution
+	copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
 
         // save initial OBC configuration for backup
         if (param.d_saveconf_back_every != 0)
@@ -145,9 +138,9 @@ void real_main(char *in_file)
 
     // close data file
     fclose(datafilep);
-	fclose(workfilep);
-	if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
-	if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
+    fclose(workfilep);
+    if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
+    if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
 
     // save last OBC configuration
     if (param.d_saveconf_back_every != 0)
@@ -156,6 +149,7 @@ void real_main(char *in_file)
     }
 
     // print simulation details
+    param.d_beta = beta0;
     print_parameters_local_jarzynski(&param, time1, time2);
 
     // free gauge configurations
@@ -167,11 +161,8 @@ void real_main(char *in_file)
     // free geometry
     free_geometry(&geo, &param);
 		
-	// free rectangles for hierarchical update
-	//free_rect_hierarc(most_update, clover_rectangle, &param);
-		
-	// free hierarchical update parameters
-	free_hierarc_params(&param);
+    // free update parameters
+    free_hierarc_params(&param);
 }
 
 

@@ -10,7 +10,7 @@ num_jar_ev      10
 num_jar_relax   1
 num_jar_steps   10
 num_jar_dmeas   10
-beta_target     6.0
+jar_beta_target     6.2
 
 # hierarchical update parameters (ONLY PARALLEL TEMPERING RUNS): num of hierarc levels ___ extension of rectangles ___ num of sweeps per rectangle
 hierarc_upd 0
