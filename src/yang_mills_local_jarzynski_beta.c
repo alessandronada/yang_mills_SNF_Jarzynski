@@ -52,10 +52,8 @@ void real_main(char *in_file)
 
     // initialize gauge configuration
     init_gauge_conf(&GC, &param);
-    init_single_conf_bound_cond(&GC, &param, 0.0);
-
+    // copy to save initial configuration on prior
     init_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
-    init_single_conf_bound_cond(&GCstart, &param, 0.0);
 
     // Monte Carlo begin
     time(&time1);
@@ -108,7 +106,7 @@ void real_main(char *in_file)
 	    perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 	    print_work(count, W, workfilep);
 
-        // save initial (OBC) and final (PBC) configurations for offline analysis
+        // save initial (beta0) and final (target beta) configurations for offline analysis
         if (param.d_saveconf_analysis_every != 0)
         {
             if (count % param.d_saveconf_analysis_every == 0)
@@ -121,7 +119,7 @@ void real_main(char *in_file)
 	    // recover the starting configuration of the evolution
 	    copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
 
-        // save initial OBC configuration for backup
+        // save initial beta0 configuration for backup
         if (param.d_saveconf_back_every != 0)
         {
             if (count % param.d_saveconf_back_every == 0)
@@ -143,7 +141,7 @@ void real_main(char *in_file)
     if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
     if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
 
-    // save last OBC configuration
+    // save last beta0 configuration
     if (param.d_saveconf_back_every != 0)
     {
         write_conf_on_file(&GC, &param);
