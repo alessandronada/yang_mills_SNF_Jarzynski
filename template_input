@@ -7,7 +7,7 @@ N_replica_pt  1   1.0          # number of parallel tempering replica ___ bounda
 
 # out-of-equilibrium evolutions parameters
 num_jar_ev      10
-num_jar_relax   1
+num_jar_between   1
 num_jar_steps   10
 num_jar_dmeas   10
 jar_beta_target     6.2

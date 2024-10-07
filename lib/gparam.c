@@ -86,7 +86,7 @@ void readinput(char *in_file, GParam *param)
 		}
 		param->d_N_replica_pt=1;
 		param->d_J_evolutions = 0;
-		param->d_J_relax = 0;
+		param->d_J_between = 0;
 		param->d_J_steps = 0;
         param->d_J_dmeas = 0;
         param->d_J_beta_target = 6.0;
@@ -584,7 +584,7 @@ void readinput(char *in_file, GParam *param)
 				}
 			param->d_J_steps = temp_i;
 		   }
-		   else if (strncmp(str, "num_jar_relax", 13) == 0)
+		   else if (strncmp(str, "num_jar_between", 13) == 0)
 			{
 			err = fscanf(input, "%d", &temp_i);
 			if (err != 1)
@@ -592,7 +592,7 @@ void readinput(char *in_file, GParam *param)
 				fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 				exit(EXIT_FAILURE);
 			}
-			param->d_J_relax = temp_i;
+			param->d_J_between = temp_i;
 			}
            else if (strncmp(str, "num_jar_dmeas", 13) == 0)
             {
@@ -1280,7 +1280,7 @@ void print_parameters_local_jarzynski(GParam const * const param, time_t time_st
 	fprintf(fp, "\n\n");
 	fprintf(fp, "number of out-of-equilibrium evolutions: %d\n", param->d_J_evolutions);
 	fprintf(fp, "number of out-of-equilibrium steps in each evolution: %d\n", param->d_J_steps);
-	fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_relax);
+	fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_between);
     fprintf(fp, "number of steps between measurements during evolution: %d\n", param->d_J_dmeas);
 	fprintf(fp, "number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
 	if (param->d_N_hierarc_levels > 0)

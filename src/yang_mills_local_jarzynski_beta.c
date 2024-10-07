@@ -62,6 +62,7 @@ void real_main(char *in_file)
     beta0 = param.d_beta;
     dbeta = (param.d_J_beta_target - param.d_beta) / param.d_J_steps;
 
+    // thermalization
     for (count = 0; count < param.d_thermal; count++)
     {
         update(&GC, &geo, &param);
@@ -73,27 +74,27 @@ void real_main(char *in_file)
         W = 0.0;
         param.d_beta = beta0;
 
-	// updates between the start of each evolution
-	for (rel = 0; rel < param.d_J_relax; rel++)
+	    // updates between the start of each evolution
+	    for (rel = 0; rel < param.d_J_between; rel++)
             update(&GC, &geo, &param);
 
         // increase the index of evolutions
         GC.evolution_index++;
 
-	// store the starting configuration of the evolution
-	copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
+	    // store the starting configuration of the evolution
+	    copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
 
-	// non-equilibrium evolution
-	for (step = 0; step < param.d_J_steps; step++)
-	{
+	    // non-equilibrium evolution
+	    for (step = 0; step < param.d_J_steps; step++)
+	    {
             //change beta and compute work
             param.d_beta = param.d_beta + dbeta;
             plaquette(&GC, &geo, &param, &plaqs, &plaqt);
             act = 1 - 0.5 * (plaqs + plaqt);
             act *= 6 / param.d_inv_vol;
-	    W += dbeta * act;
+	        W += dbeta * act;
 	    
-	    // perform a single step of updates with new beta
+	        // perform a single step of updates with new beta
             update(&GC, &geo, &param);
 
             if ((step + 1) % param.d_J_dmeas == 0 && step != (param.d_J_steps - 1))
@@ -101,11 +102,11 @@ void real_main(char *in_file)
                 perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
                 print_work(count, W, workfilep);
             }
-	}
+	    }
 
-	// perform measures only on PBC configuration
-	perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
-	print_work(count, W, workfilep);
+	    // perform measures only on PBC configuration
+	    perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+	    print_work(count, W, workfilep);
 
         // save initial (OBC) and final (PBC) configurations for offline analysis
         if (param.d_saveconf_analysis_every != 0)
@@ -117,8 +118,8 @@ void real_main(char *in_file)
             }
         }
 
-	// recover the starting configuration of the evolution
-	copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
+	    // recover the starting configuration of the evolution
+	    copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
 
         // save initial OBC configuration for backup
         if (param.d_saveconf_back_every != 0)
@@ -181,16 +182,22 @@ void print_template_input(void)
     {
     fprintf(fp,"size 4 4 4 4  # Nt Nx Ny Nz\n");
     fprintf(fp,"\n");
-		fprintf(fp,"# parallel tempering parameters\n");
-		fprintf(fp,"defect_dir    1             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
-		fprintf(fp,"defect_size   1 1 1         # size of the defect (order: y-size z-size t-size)\n");
-		fprintf(fp,"N_replica_pt  2    0.0 1.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
-		fprintf(fp,"\n");
-		fprintf(fp,"# hierarchical update parameters\n");
-		fprintf(fp,"# Ord:qer: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
-		fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
-		fprintf(fp,"\n");
-		fprintf(fp,"# Simulations parameters\n");
+	fprintf(fp,"# parallel tempering parameters\n");
+	fprintf(fp,"defect_dir    1             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
+	fprintf(fp,"defect_size   1 1 1         # size of the defect (order: y-size z-size t-size)\n");
+	fprintf(fp,"N_replica_pt  2    0.0 1.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
+	fprintf(fp,"\n");
+    fprintf(fp, "# out-of-equilibrium evolutions parameters\n");
+    fprintf(fp, "num_jar_ev      10         #number of non-equilibrium evolutions\n");
+    fprintf(fp, "num_jar_between   1        #number of updates between the start of each evolution\n");
+    fprintf(fp, "num_jar_steps   10         #steps in each out-of-equilibrium evolution\n");
+    fprintf(fp, "num_jar_dmeas   10         #steps between measurements during an evolution (only in beta)\n");
+    fprintf(fp, "jar_beta_target     6.2    #target beta (only for evolutions in beta)\n");
+	fprintf(fp,"# hierarchical update parameters\n");
+	fprintf(fp,"# Ord:qer: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
+	fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
+	fprintf(fp,"\n");
+	fprintf(fp,"# Simulations parameters\n");
     fprintf(fp, "beta  5.705\n");
     fprintf(fp, "theta 1.5\n");
     fprintf(fp,"\n");
@@ -203,19 +210,19 @@ void print_template_input(void)
     fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
     fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
     fprintf(fp, "\n");
-		fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
-		fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
-		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
-		fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
-		fprintf(fp,"\n");
+	fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
+	fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
+	fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
+	fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
+	fprintf(fp,"\n");
     fprintf(fp, "# output files\n");
-		fprintf(fp, "conf_file             conf.dat\n");
-		fprintf(fp, "data_file             dati.dat\n");
-		fprintf(fp, "chiprime_data_file    chiprime_cool.dat\n");
-		fprintf(fp, "topcharge_tprof_file  topo_tcorr_cool.dat\n");
-		fprintf(fp, "log_file              log.dat\n");
-		fprintf(fp, "swap_acc_file         swap_acc.dat\n");
-		fprintf(fp, "swap_track_file       swap_track.dat\n");
+	fprintf(fp, "conf_file             conf.dat\n");
+	fprintf(fp, "data_file             dati.dat\n");
+	fprintf(fp, "chiprime_data_file    chiprime_cool.dat\n");
+	fprintf(fp, "topcharge_tprof_file  topo_tcorr_cool.dat\n");
+	fprintf(fp, "log_file              log.dat\n");
+	fprintf(fp, "swap_acc_file         swap_acc.dat\n");
+	fprintf(fp, "swap_track_file       swap_track.dat\n");
     fprintf(fp, "\n");
     fprintf(fp, "randseed 0    # (0=time)\n");
     fclose(fp);
