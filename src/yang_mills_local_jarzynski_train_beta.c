@@ -94,14 +94,14 @@ void real_main(char *in_file)
             {
                 //change beta and compute work
                 beta_old = param.d_beta
-                param.d_beta = protocol((((double) step+1) / ((double) param.d_J_steps), beta0, param.d_J_beta_target);
+                param.d_beta = beta_protocol((((double) step+1) / ((double) param.d_J_steps), beta0, param.d_J_beta_target);
                 dbeta = param.d_beta - beta_old;
                 plaquette(&GC, &geo, &param, &plaqs, &plaqt);
                 act = 1 - 0.5 * (plaqs + plaqt);
-                act *= 6 / param.d_inv_vol;
+                act *= 6 * param.d_volume;
                 W += dbeta * act;
 
-                // save plaqs + plaqt in array
+                // save 0.5 *( plaqs + plaqt ) in array
 
                 // perform a single step of updates with new beta
                 update(&GC, &geo, &param);
@@ -142,15 +142,15 @@ void real_main(char *in_file)
 
     // free gauge configurations
     free_gauge_conf(&GC, &param);
-    free_bound_cond(&GC, &param);
+    free_bound_cond(&GC, &param);//delete?
     free_gauge_conf(&GCstart, &param);
-    free_bound_cond(&GCstart, &param);
+    free_bound_cond(&GCstart, &param);//delete?
 
     // free geometry
     free_geometry(&geo, &param);
 		
     // free update parameters
-    free_hierarc_params(&param);
+    free_hierarc_params(&param);//delete?
 }
 
 
