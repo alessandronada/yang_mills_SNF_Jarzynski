@@ -88,9 +88,10 @@ void readinput(char *in_file, GParam *param)
 		param->d_J_evolutions = 0;
 		param->d_J_between = 0;
 		param->d_J_steps = 0;
-        param->d_J_dmeas = 0;
-        param->d_J_beta_target = 6.0;
-		
+    param->d_J_dmeas = 0;
+    param->d_J_beta_target = 6.0;
+		param->d_J_nepochs = 1;
+
 		// default = do not compute chi_prime
 		param->d_chi_prime_meas = 0;
 		param->d_topcharge_tprof_meas = 0;
@@ -564,6 +565,16 @@ void readinput(char *in_file, GParam *param)
                   }
                   param->d_J_beta_target = temp_d;
            }
+       else if (strncmp(str, "num_jar_epochs", 14) == 0)
+		   {
+				err = fscanf(input, "%d", &temp_i);
+				if (err != 1)
+				{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+				}
+				param->d_J_nepochs = temp_i;
+		   }
 		   else if (strncmp(str, "num_jar_ev", 10) == 0)
 		   {
 				err = fscanf(input, "%d", &temp_i);
@@ -1278,6 +1289,10 @@ void print_parameters_local_jarzynski(GParam const * const param, time_t time_st
 		fprintf(fp, "x%d", param->d_L_defect[i]);
 	}
 	fprintf(fp, "\n\n");
+
+  if (param->d_J_nepochs > 1)
+    fprintf(fp, "number epochs for protocol training: %d\n", param->d_J_nepochs);
+
 	fprintf(fp, "number of out-of-equilibrium evolutions: %d\n", param->d_J_evolutions);
 	fprintf(fp, "number of out-of-equilibrium steps in each evolution: %d\n", param->d_J_steps);
 	fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_between);

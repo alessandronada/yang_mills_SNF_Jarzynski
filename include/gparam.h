@@ -25,11 +25,12 @@ typedef struct GParam {
   double* d_pt_bound_cond_coeff; // boundary conditions coefficients
 
   // Jarzynski parameters
-  int d_J_evolutions; // number of out-of-equilibrium evolutions
-  int d_J_between;	// relax steps between evolutions
-  int d_J_steps;	// steps in each evolution
-  int d_J_dmeas;	// steps between each measurement during evolution
-  double d_J_beta_target;     // target beta, only for evolutions in beta
+  int d_J_evolutions;      // number of out-of-equilibrium evolutions
+  int d_J_between;         // relax steps between evolutions
+  int d_J_steps;           // steps in each evolution
+  int d_J_dmeas;	         // steps between each measurement during evolution
+  double d_J_beta_target;  // target beta, only for evolutions in beta
+  int d_J_nepochs;         // number of epochs for training
 	
 	// hierarchical update (parallel tempering)
 	int d_N_hierarc_levels; // number of hierarchical levels

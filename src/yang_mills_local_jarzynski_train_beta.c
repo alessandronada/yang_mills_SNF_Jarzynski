@@ -23,6 +23,32 @@ double beta_protocol(double t, double b0, double bt)
     return b0 + t * (bt - b0);
 }
 
+void training_setup(int nsteps, double** forw_plaq, double** forw_work)
+{
+  int err = 0;
+
+  if (err == 0) err = posix_memalign((void**) forw_plaq, DOUBLE_ALIGN, (size_t) nsteps * sizeof(double));
+  if (err == 0) err = posix_memalign((void**) forw_work, DOUBLE_ALIGN, (size_t) nsteps * sizeof(double));
+
+  if (err != 0) {
+    fprintf("Unable to setup for training %d, %d %s", err, __LINE__, __FILE__);
+  }
+}
+
+void training_init(int nsteps, double* forw_plaq, double* forw_work)
+{
+  for (int step = 0; step < nsteps; step++){
+    forw_plaq[step] = 0;
+    forw_work[step] = 0;
+  }
+}
+
+void training_clean(double* forw_plaq, double* forw_work)
+{
+  free(forw_work);
+  free(forw_plaq);
+}
+
 void real_main(char *in_file)
 {
     Gauge_Conf GC, GCstart;
@@ -31,7 +57,7 @@ void real_main(char *in_file)
     double W = 0.0, beta0 = 0.0, dbeta = 0.0, act = 0.0, beta_old = 0.0, plaqs, plaqt;
 
     char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-    int count, rel, step;
+    int count, rel, step, epoch;
     FILE *datafilep, *chiprimefilep,  *topchar_tprof_filep, *workfilep;
     time_t time1, time2;
 
@@ -70,9 +96,16 @@ void real_main(char *in_file)
         update(&GC, &geo, &param);
     }
 
+    double *forw_plaq, *forw_work;
+    // allocating vectors for training
+    training_setup(param.d_J_steps, &forw_plaq, &forw_work);
+
     // loop on training steps
     for (epoch = 0; epoch < param.d_J_nepochs; epoch++)
     {
+        // inint vectors for training
+        training_init(param.d_J_steps, forw_plaq, forw_work);
+     
         // loop on evolutions
         for (count = 0; count < param.d_J_evolutions; count++)
         {
@@ -93,8 +126,8 @@ void real_main(char *in_file)
             for (step = 0; step < param.d_J_steps; step++)
             {
                 //change beta and compute work
-                beta_old = param.d_beta
-                param.d_beta = beta_protocol((((double) step+1) / ((double) param.d_J_steps), beta0, param.d_J_beta_target);
+                beta_old = param.d_beta;
+                param.d_beta = beta_protocol(((double) step+1) / ((double) param.d_J_steps), beta0, param.d_J_beta_target);
                 dbeta = param.d_beta - beta_old;
                 plaquette(&GC, &geo, &param, &plaqs, &plaqt);
                 act = 1 - 0.5 * (plaqs + plaqt);
@@ -102,6 +135,10 @@ void real_main(char *in_file)
                 W += dbeta * act;
 
                 // save 0.5 *( plaqs + plaqt ) in array
+                forw_plaq[step] += 0.5 * (plaqs + plaqt);
+
+                // saving work increment, full work is computed later
+                forw_work[step] = dbeta * act;
 
                 // perform a single step of updates with new beta
                 update(&GC, &geo, &param);
@@ -111,7 +148,15 @@ void real_main(char *in_file)
             copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
         }
 
+        double inv_nevols = 1. / param.d_J_evolutions;
         // average of plaquette expectation values for each step
+        for (step = 0; step < param.d_J_steps; step++){
+          forw_plaq[step] *= inv_nevols;
+          forw_work[step] *= inv_nevols;
+        }
+
+        // accumulate work increments over steps
+        for(step = 1; step < param.d_J_steps; step++) forw_work[step] += forw_work[step - 1];
 
         // splines interpolation of plaquette expectation values along steps -> P as a function of beta
 
@@ -120,6 +165,8 @@ void real_main(char *in_file)
         // protocol parameters update
 
     }
+    // cleaning vectors for training
+    training_clean(forw_work, forw_plaq);
 
     time(&time2);
     // Monte Carlo end
@@ -142,15 +189,10 @@ void real_main(char *in_file)
 
     // free gauge configurations
     free_gauge_conf(&GC, &param);
-    free_bound_cond(&GC, &param);//delete?
     free_gauge_conf(&GCstart, &param);
-    free_bound_cond(&GCstart, &param);//delete?
 
     // free geometry
     free_geometry(&geo, &param);
-		
-    // free update parameters
-    free_hierarc_params(&param);//delete?
 }
 
 
@@ -175,14 +217,12 @@ void print_template_input(void)
 	fprintf(fp,"N_replica_pt  2    0.0 1.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
 	fprintf(fp,"\n");
     fprintf(fp, "# out-of-equilibrium evolutions parameters\n");
+    fprintf(fp, "num_jar_epochs   1         #number of epochs for the training\n");
     fprintf(fp, "num_jar_ev      10         #number of non-equilibrium evolutions\n");
-    fprintf(fp, "num_jar_between   1        #number of updates between the start of each evolution\n");
+    fprintf(fp, "num_jar_between  1         #number of updates between the start of each evolution\n");
     fprintf(fp, "num_jar_steps   10         #steps in each out-of-equilibrium evolution\n");
     fprintf(fp, "num_jar_dmeas   10         #steps between measurements during an evolution (only in beta)\n");
     fprintf(fp, "jar_beta_target     6.2    #target beta (only for evolutions in beta)\n");
-	fprintf(fp,"# hierarchical update parameters\n");
-	fprintf(fp,"# Ord:qer: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
-	fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
 	fprintf(fp,"\n");
 	fprintf(fp,"# Simulations parameters\n");
     fprintf(fp, "beta  5.705\n");
