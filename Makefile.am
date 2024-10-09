@@ -14,10 +14,11 @@ bin_PROGRAMS = conf_check \
                yang_mills_tube_disc \
                yang_mills_tracedef \
                yang_mills_local_pt \
-	       yang_mills_local_jarzynski_bc \
-	       yang_mills_local_jarzynski_beta \
-							 yang_mills_local_pt_multicanonic \
-							 yang_mills_gradient_flow 
+               yang_mills_local_jarzynski_bc \
+               yang_mills_local_jarzynski_beta \
+               yang_mills_local_pt_multicanonic \
+               yang_mills_gradient_flow \
+               yang_mills_local_jarzynski_train_beta
 
 align = ./include/aligncheck.h \
         ./lib/aligncheck.c
@@ -345,6 +346,21 @@ yang_mills_gradient_flow_SOURCES=./src/yang_mills_gradient_flow.c \
                        $(sun) \
                        $(tens_prod) \
                        $(u1)
+
+yang_mills_local_jarzynski_train_beta_SOURCES=./src/yang_mills_local_jarzynski_train_beta.c \
+                                              $(align) \
+                                              $(dSFMT)  \
+                                              $(endian) \
+                                              $(funcpoint) \
+                                              $(gauge_conf) \
+                                              $(geometry) \
+                                              $(gparam) \
+                                              ./include/macro.h \
+                                              $(random) \
+                                              $(su2) \
+                                              $(sun) \
+                                              $(tens_prod) \
+                                              $(u1)
 
 AM_CFLAGS = -std=c99 -O3 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@
 
