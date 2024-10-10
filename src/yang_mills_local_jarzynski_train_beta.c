@@ -17,18 +17,20 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/spline.h"
 
 double beta_protocol(double t, double b0, double bt)
 {
     return b0 + t * (bt - b0);
 }
 
-void training_setup(int nsteps, double** forw_plaq, double** forw_work)
+void training_setup(int nsteps, double** forw_plaq, double** forw_work, double** forw_beta)
 {
   int err = 0;
 
-  if (err == 0) err = posix_memalign((void**) forw_plaq, DOUBLE_ALIGN, (size_t) nsteps * sizeof(double));
+  if (err == 0) err = posix_memalign((void**) forw_plaq, DOUBLE_ALIGN, (size_t) (nsteps + 1) * sizeof(double));
   if (err == 0) err = posix_memalign((void**) forw_work, DOUBLE_ALIGN, (size_t) nsteps * sizeof(double));
+  if (err == 0) err = posix_memalign((void**) forw_beta, DOUBLE_ALIGN, (size_t) (nsteps + 1) * sizeof(double));
 
   if (err != 0) {
     fprintf(stderr, "Unable to setup for training %d, %d %s", err, __LINE__, __FILE__);
@@ -41,12 +43,14 @@ void training_init(int nsteps, double* forw_plaq, double* forw_work)
     forw_plaq[step] = 0;
     forw_work[step] = 0;
   }
+  forw_plaq[nsteps] = 0;
 }
 
-void training_clean(double* forw_plaq, double* forw_work)
+void training_clean(double* forw_plaq, double* forw_work, double* forw_beta)
 {
   free(forw_work);
   free(forw_plaq);
+  free(forw_beta);
 }
 
 void real_main(char *in_file)
@@ -95,9 +99,11 @@ void real_main(char *in_file)
         update(&GC, &geo, &param);
     }
 
-    double *forw_plaq, *forw_work;
+    double *forw_plaq, *forw_work, *forw_beta;
     // allocating vectors for training
-    training_setup(param.d_J_steps, &forw_plaq, &forw_work);
+    training_setup(param.d_J_steps, &forw_plaq, &forw_work, &forw_beta);
+
+    forw_beta[0] = beta0;
 
     // loop on training steps
     for (epoch = 0; epoch < param.d_J_nepochs; epoch++)
@@ -105,6 +111,10 @@ void real_main(char *in_file)
         // inint vectors for training
         training_init(param.d_J_steps, forw_plaq, forw_work);
      
+        for (step = 0; step < param.d_J_steps; step++) {
+          forw_beta[step+1] = beta_protocol(((double) step+1) / ((double) param.d_J_steps), beta0, param.d_J_beta_target);
+        }
+
         // loop on evolutions
         for (count = 0; count < param.d_J_evolutions; count++)
         {
@@ -137,11 +147,14 @@ void real_main(char *in_file)
                 forw_plaq[step] += 0.5 * (plaqs + plaqt);
 
                 // saving work increment, full work is computed later
-                forw_work[step] = dbeta * act;
+                forw_work[step] += dbeta * act;
 
                 // perform a single step of updates with new beta
                 update(&GC, &geo, &param);
             }
+
+            plaquette(&GC, &geo, &param, &plaqs, &plaqt);
+            forw_plaq[param.d_J_steps] = 0.5 * (plaqs + plaqt);
 
             // recover the starting configuration of the evolution
             copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
@@ -153,16 +166,22 @@ void real_main(char *in_file)
           forw_plaq[step] *= inv_nevols;
           forw_work[step] *= inv_nevols;
         }
+        forw_plaq[param.d_J_steps] *= inv_nevols;
 
         // accumulate work increments over steps
         for(step = 1; step < param.d_J_steps; step++) forw_work[step] += forw_work[step - 1];
 
-        // print measures on workfile
-        fprintf(workfilep, "%d ", epoch);
-        for(step = 0; step < param.d_J_steps; step++) fprintf(workfilep, "%.12g %.12g ", forw_plaq[step], forw_work[step]);
-        fprintf(workfilep, "\n");
-
         // splines interpolation of plaquette expectation values along steps -> P as a function of beta
+        spline* plaq_spline = new_spline(forw_beta, forw_plaq, param.d_J_steps+1);
+
+        // print measures on workfile
+        fprintf(workfilep, "%d\n", epoch);
+        for(step = 0; step < param.d_J_steps; step++){
+          fprintf(workfilep, "%.12g ", forw_beta[step]);
+          fprintf(workfilep, "%.12g %.12g ", forw_plaq[step], forw_work[step]);
+          fprintf(workfilep, "%.12g\n", integral_spline(plaq_spline, forw_beta[step+1]));
+        }
+        fprintf(workfilep, "%.12g %.12g\n", forw_beta[param.d_J_steps], forw_plaq[param.d_J_steps]);
 
         // computation of the gradient of W 
 
@@ -170,7 +189,7 @@ void real_main(char *in_file)
 
     }
     // cleaning vectors for training
-    training_clean(forw_work, forw_plaq);
+    training_clean(forw_work, forw_plaq, forw_beta);
 
     time(&time2);
     // Monte Carlo end

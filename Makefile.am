@@ -84,6 +84,9 @@ u1 = ./include/u1.h \
      ./lib/u1.c \
      ./lib/u1_upd.c
 
+train_interpolator = ./include/spline.h \
+                     ./lib/spline.c
+
 conf_check_SOURCES=./src/conf_check.c \
                    $(align) \
                    $(dSFMT) \
@@ -360,7 +363,8 @@ yang_mills_local_jarzynski_train_beta_SOURCES=./src/yang_mills_local_jarzynski_t
                                               $(su2) \
                                               $(sun) \
                                               $(tens_prod) \
-                                              $(u1)
+                                              $(u1) \
+                                              $(train_interpolator)
 
 AM_CFLAGS = -std=c99 -O3 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@
 

@@ -557,7 +557,7 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
   GC->evolution_index=GC2->evolution_index;
   }
 
-// allocate GC and initialize with GC2
+// copy GC2 in GC
 void copy_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC2, GParam const * const param)
 {
 	long r;
