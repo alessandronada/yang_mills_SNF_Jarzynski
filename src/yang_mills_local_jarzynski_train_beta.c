@@ -31,7 +31,7 @@ void training_setup(int nsteps, double** forw_plaq, double** forw_work)
   if (err == 0) err = posix_memalign((void**) forw_work, DOUBLE_ALIGN, (size_t) nsteps * sizeof(double));
 
   if (err != 0) {
-    fprintf("Unable to setup for training %d, %d %s", err, __LINE__, __FILE__);
+    fprintf(stderr, "Unable to setup for training %d, %d %s", err, __LINE__, __FILE__);
   }
 }
 
@@ -56,9 +56,9 @@ void real_main(char *in_file)
     GParam param;
     double W = 0.0, beta0 = 0.0, dbeta = 0.0, act = 0.0, beta_old = 0.0, plaqs, plaqt;
 
-    char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+    // char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
     int count, rel, step, epoch;
-    FILE *datafilep, *chiprimefilep,  *topchar_tprof_filep, *workfilep;
+    FILE *workfilep;
     time_t time1, time2;
 
     // to disable nested parallelism
@@ -74,7 +74,6 @@ void real_main(char *in_file)
     initrand(param.d_randseed);
 
     // open data_file
-    init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
     init_work_file(&workfilep, &param);
 
     // initialize geometry
@@ -131,7 +130,7 @@ void real_main(char *in_file)
                 dbeta = param.d_beta - beta_old;
                 plaquette(&GC, &geo, &param, &plaqs, &plaqt);
                 act = 1 - 0.5 * (plaqs + plaqt);
-                act *= 6 * param.d_volume;
+                act *= (double) (6 * param.d_volume);
                 W += dbeta * act;
 
                 // save 0.5 *( plaqs + plaqt ) in array
@@ -158,6 +157,11 @@ void real_main(char *in_file)
         // accumulate work increments over steps
         for(step = 1; step < param.d_J_steps; step++) forw_work[step] += forw_work[step - 1];
 
+        // print measures on workfile
+        fprintf(workfilep, "%d ", epoch);
+        for(step = 0; step < param.d_J_steps; step++) fprintf(workfilep, "%.12g %.12g ", forw_plaq[step], forw_work[step]);
+        fprintf(workfilep, "\n");
+
         // splines interpolation of plaquette expectation values along steps -> P as a function of beta
 
         // computation of the gradient of W 
@@ -172,10 +176,7 @@ void real_main(char *in_file)
     // Monte Carlo end
 
     // close data file
-    fclose(datafilep);
     fclose(workfilep);
-    if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
-    if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
 
     // save last starting configuration
     if (param.d_saveconf_back_every != 0)
@@ -185,7 +186,7 @@ void real_main(char *in_file)
 
     // print simulation details
     param.d_beta = beta0;
-    print_parameters_local_jarzynski(&param, time1, time2);
+    print_parameters_j_train_beta(&param, time1, time2);
 
     // free gauge configurations
     free_gauge_conf(&GC, &param);
@@ -211,11 +212,6 @@ void print_template_input(void)
     {
     fprintf(fp,"size 4 4 4 4  # Nt Nx Ny Nz\n");
     fprintf(fp,"\n");
-	fprintf(fp,"# parallel tempering parameters\n");
-	fprintf(fp,"defect_dir    1             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
-	fprintf(fp,"defect_size   1 1 1         # size of the defect (order: y-size z-size t-size)\n");
-	fprintf(fp,"N_replica_pt  2    0.0 1.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
-	fprintf(fp,"\n");
     fprintf(fp, "# out-of-equilibrium evolutions parameters\n");
     fprintf(fp, "num_jar_epochs   1         #number of epochs for the training\n");
     fprintf(fp, "num_jar_ev      10         #number of non-equilibrium evolutions\n");
@@ -223,8 +219,8 @@ void print_template_input(void)
     fprintf(fp, "num_jar_steps   10         #steps in each out-of-equilibrium evolution\n");
     fprintf(fp, "num_jar_dmeas   10         #steps between measurements during an evolution (only in beta)\n");
     fprintf(fp, "jar_beta_target     6.2    #target beta (only for evolutions in beta)\n");
-	fprintf(fp,"\n");
-	fprintf(fp,"# Simulations parameters\n");
+    fprintf(fp,"\n");
+    fprintf(fp,"# Simulations parameters\n");
     fprintf(fp, "beta  5.705\n");
     fprintf(fp, "theta 1.5\n");
     fprintf(fp,"\n");
@@ -237,19 +233,15 @@ void print_template_input(void)
     fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
     fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
     fprintf(fp, "\n");
-	fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
-	fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
-	fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
-	fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
-	fprintf(fp,"\n");
+    fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
+    fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
+    fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
+    fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
+    fprintf(fp,"\n");
     fprintf(fp, "# output files\n");
-	fprintf(fp, "conf_file             conf.dat\n");
-	fprintf(fp, "data_file             dati.dat\n");
-	fprintf(fp, "chiprime_data_file    chiprime_cool.dat\n");
-	fprintf(fp, "topcharge_tprof_file  topo_tcorr_cool.dat\n");
-	fprintf(fp, "log_file              log.dat\n");
-	fprintf(fp, "swap_acc_file         swap_acc.dat\n");
-	fprintf(fp, "swap_track_file       swap_track.dat\n");
+    fprintf(fp, "conf_file             conf.dat\n");
+    fprintf(fp, "log_file              log.dat\n");
+    fprintf(fp, "work_file             work.dat\n");
     fprintf(fp, "\n");
     fprintf(fp, "randseed 0    # (0=time)\n");
     fclose(fp);

@@ -561,7 +561,7 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
 void copy_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC2, GParam const * const param)
 {
 	long r;
-	int mu, err;
+	int mu;
 
 	// initialize GC
 	for (r = 0; r < (param->d_volume); r++)

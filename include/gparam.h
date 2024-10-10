@@ -113,6 +113,7 @@ void free_hierarc_params(GParam *param);
 void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_jarzynski(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_j_train_beta(const GParam* const param, time_t start, time_t end);
 void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end);

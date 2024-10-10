@@ -1290,14 +1290,11 @@ void print_parameters_local_jarzynski(GParam const * const param, time_t time_st
 	}
 	fprintf(fp, "\n\n");
 
-  if (param->d_J_nepochs > 1)
-    fprintf(fp, "number epochs for protocol training: %d\n", param->d_J_nepochs);
-
-	fprintf(fp, "number of out-of-equilibrium evolutions: %d\n", param->d_J_evolutions);
-	fprintf(fp, "number of out-of-equilibrium steps in each evolution: %d\n", param->d_J_steps);
-	fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_between);
-    fprintf(fp, "number of steps between measurements during evolution: %d\n", param->d_J_dmeas);
-	fprintf(fp, "number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+  fprintf(fp, "number of out-of-equilibrium evolutions: %d\n", param->d_J_evolutions);
+  fprintf(fp, "number of out-of-equilibrium steps in each evolution: %d\n", param->d_J_steps);
+  fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_between);
+  fprintf(fp, "number of steps between measurements during evolution: %d\n", param->d_J_dmeas);
+  fprintf(fp, "number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
 	if (param->d_N_hierarc_levels > 0)
 	{
 		fprintf(fp, "extention of rectangles: ");
@@ -1314,8 +1311,8 @@ void print_parameters_local_jarzynski(GParam const * const param, time_t time_st
 	}
 	fprintf(fp, "\n\n");
 
-	fprintf(fp, "beta: %.10lf\n", param->d_beta);
-    fprintf(fp, "beta target: %.10lf\n", param->d_J_beta_target);
+  fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  fprintf(fp, "beta target: %.10lf\n", param->d_J_beta_target);
 #ifdef THETA_MODE
 	fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -1340,6 +1337,81 @@ void print_parameters_local_jarzynski(GParam const * const param, time_t time_st
 	fprintf(fp, "\n");
 
 	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec);
+	fprintf(fp, "\n");
+
+	if (endian() == 0)
+	{
+		fprintf(fp, "Little endian machine\n\n");
+	}
+	else
+	{
+		fprintf(fp, "Big endian machine\n\n");
+	}
+
+	fclose(fp);
+}
+
+void print_parameters_j_train_beta(const GParam* const param, time_t start, time_t end)
+{
+  FILE *fp;
+	int i;
+	double diff_sec;
+
+	fp = fopen(param->d_log_file, "w");
+	fprintf(fp, "+--------------------------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for yang_mills_local_jarzynski_train_beta |\n");
+	fprintf(fp, "+--------------------------------------------------------------+\n\n");
+
+#ifdef OPENMP_MODE
+	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
+#endif
+
+	fprintf(fp, "number of colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+
+	fprintf(fp, "lattice: %d", param->d_size[0]);
+	for (i = 1; i < STDIM; i++)
+	{
+		fprintf(fp, "x%d", param->d_size[i]);
+	}
+	fprintf(fp, "\n\n");
+
+  fprintf(fp, "number epochs for protocol training: %d\n", param->d_J_nepochs);
+	fprintf(fp, "number of out-of-equilibrium evolutions: %d\n", param->d_J_evolutions);
+	fprintf(fp, "number of out-of-equilibrium steps in each evolution: %d\n", param->d_J_steps);
+	fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_between);
+  fprintf(fp, "number of steps between measurements during evolution: %d\n", param->d_J_dmeas);
+	fprintf(fp, "\n\n");
+
+	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+    fprintf(fp, "beta target: %.10lf\n", param->d_J_beta_target);
+#ifdef THETA_MODE
+	fprintf(fp, "theta: %.10lf\n", param->d_theta);
+#endif
+	fprintf(fp, "\n");
+
+	fprintf(fp, "sample:    %d\n", param->d_sample);
+	fprintf(fp, "thermal:   %d\n", param->d_thermal);
+	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
+	fprintf(fp, "measevery: %d\n", param->d_measevery);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "start:                   %d\n", param->d_start);
+	fprintf(fp, "saveconf_back_every:     %d\n", param->d_saveconf_back_every);
+	fprintf(fp, "saveconf_analysis_every: %d\n", param->d_saveconf_analysis_every);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "coolsteps:      %d\n", param->d_coolsteps);
+	fprintf(fp, "coolrepeat:     %d\n", param->d_coolrepeat);
+	fprintf(fp, "\n");
+
+  fprintf(fp, "output file (aka work file): %s", param->d_work_file);
+
+	fprintf(fp, "randseed: %u\n", param->d_randseed);
+	fprintf(fp, "\n");
+
+	diff_sec = difftime(end, start);
 	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec);
 	fprintf(fp, "\n");
 
