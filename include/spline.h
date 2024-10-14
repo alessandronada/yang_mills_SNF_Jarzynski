@@ -11,11 +11,16 @@ typedef struct spline{
     int nodes_num;
     double* x;
     double** coeff;
+
+    const char _free_flag;
 } spline;
 
-spline* new_spline(double* x, double* y, int len);
-spline* new_spline_movesem(double** x, double** y, int len);
+spline* new_spline(int len, double* xptr, double* yptr);
+void init_spline(spline* s, int len, double* x, double* y);
 void free_spline(spline* s);
+
+void save_spline_onfile(const spline * const s, FILE* out);
+void init_spline_fromfile(spline* s, FILE* in);
 
 double evaluate_spline(const spline * const s, double x);
 double derivative_spline(const spline * const s, double x);

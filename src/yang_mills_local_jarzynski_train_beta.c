@@ -102,6 +102,7 @@ void real_main(char *in_file)
     double *forw_plaq, *forw_work, *forw_beta;
     // allocating vectors for training
     training_setup(param.d_J_steps, &forw_plaq, &forw_work, &forw_beta);
+    spline* plaq_spline = new_spline(param.d_J_steps+1, forw_beta, forw_plaq);
 
     forw_beta[0] = beta0;
 
@@ -172,7 +173,7 @@ void real_main(char *in_file)
         for(step = 1; step < param.d_J_steps; step++) forw_work[step] += forw_work[step - 1];
 
         // splines interpolation of plaquette expectation values along steps -> P as a function of beta
-        spline* plaq_spline = new_spline(forw_beta, forw_plaq, param.d_J_steps+1);
+        init_spline(plaq_spline, param.d_J_steps+1, NULL, NULL);
 
         // print measures on workfile
         fprintf(workfilep, "%d\n", epoch);
@@ -189,6 +190,7 @@ void real_main(char *in_file)
 
     }
     // cleaning vectors for training
+    free_spline(plaq_spline);
     training_clean(forw_work, forw_plaq, forw_beta);
 
     time(&time2);
@@ -236,26 +238,23 @@ void print_template_input(void)
     fprintf(fp, "num_jar_ev      10         #number of non-equilibrium evolutions\n");
     fprintf(fp, "num_jar_between  1         #number of updates between the start of each evolution\n");
     fprintf(fp, "num_jar_steps   10         #steps in each out-of-equilibrium evolution\n");
-    fprintf(fp, "num_jar_dmeas   10         #steps between measurements during an evolution (only in beta)\n");
     fprintf(fp, "jar_beta_target     6.2    #target beta (only for evolutions in beta)\n");
     fprintf(fp,"\n");
     fprintf(fp,"# Simulations parameters\n");
     fprintf(fp, "beta  5.705\n");
     fprintf(fp, "theta 1.5\n");
     fprintf(fp,"\n");
-    fprintf(fp, "sample     10\n");
     fprintf(fp, "thermal    0\n");
     fprintf(fp, "overrelax  5\n");
-    fprintf(fp, "measevery  1\n");
     fprintf(fp,"\n");
     fprintf(fp, "start                    0  # 0=ordered  1=random  2=from saved configuration\n");
     fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
     fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
-    fprintf(fp, "\n");
-    fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
-    fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
-    fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
-    fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
+    // fprintf(fp, "\n");
+    // fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
+    // fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
+    // fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
+    // fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
     fprintf(fp,"\n");
     fprintf(fp, "# output files\n");
     fprintf(fp, "conf_file             conf.dat\n");
