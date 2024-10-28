@@ -104,7 +104,7 @@ void real_main(char *in_file)
 
 		// perform measures only on PBC configuration
 		perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
-		print_work(count, W, workfilep);
+		print_work(GC.evolution_index, W, workfilep);
 
         // save initial (OBC) and final (PBC) configurations for offline analysis
         if (param.d_saveconf_analysis_every != 0)
