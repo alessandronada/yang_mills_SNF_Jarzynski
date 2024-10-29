@@ -2,7 +2,12 @@
 ************ PROGRAM FOR SIMULATION OF LATTICE YANG-MILLS THEORIES ***********
 ******************************************************************************
 
-Based on: claudio-bonati/yang-mills
+Based on: claudio-bonati/yang-mills and on Claudio-Bonanno-93/yang_mills_PTBC
+
+Alessandro Nada (nada.alessandro@gmail.com) contributions:
+
+- Non-equilibrium Monte Carlo in the Boundary Conditions
+- Non-equilibrium Monte Carlo in beta 
 
 Claudio Bonanno (claudiobonanno93@gmail.com) contributions:
 
