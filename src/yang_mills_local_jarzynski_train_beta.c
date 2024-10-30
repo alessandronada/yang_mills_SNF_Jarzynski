@@ -18,6 +18,7 @@
 #include"../include/gparam.h"
 #include"../include/random.h"
 #include"../include/spline.h"
+#include"../include/cheby_pol.h"
 
 double beta_protocol(double t, double b0, double bt)
 {
@@ -102,18 +103,29 @@ void real_main(char *in_file)
     double *forw_plaq, *forw_work, *forw_beta;
     // allocating vectors for training
     training_setup(param.d_J_steps, &forw_plaq, &forw_work, &forw_beta);
+
+    // printf("%p %p %p\n", (void*) forw_beta, (void*) forw_plaq, (void*) forw_work); fflush(stdout);
+
     spline* plaq_spline = new_spline(param.d_J_steps+1, forw_beta, forw_plaq);
 
+    cheby_pol protocol;
+    init_cheby_pol(&protocol);
+
+    protocol.coef[0] = 0.5 * (param.d_J_beta_target + beta0);
+    protocol.coef[1] = 0.5 * (param.d_J_beta_target - beta0);
+
     forw_beta[0] = beta0;
+    forw_beta[param.d_J_steps] = param.d_J_beta_target;
 
     // loop on training steps
     for (epoch = 0; epoch < param.d_J_nepochs; epoch++)
     {
         // inint vectors for training
         training_init(param.d_J_steps, forw_plaq, forw_work);
-     
-        for (step = 0; step < param.d_J_steps; step++) {
-          forw_beta[step+1] = beta_protocol(((double) step+1) / ((double) param.d_J_steps), beta0, param.d_J_beta_target);
+
+        // TODO move this in training init
+        for (step =  param.d_J_steps-1; step > 0; step--) {
+          forw_beta[step] = evaluate_cheby_pol(&protocol, x_to_negone_one((double) step, (double) param.d_J_steps, 0.));
         }
 
         // loop on evolutions
@@ -136,8 +148,8 @@ void real_main(char *in_file)
             for (step = 0; step < param.d_J_steps; step++)
             {
                 //change beta and compute work
-                beta_old = param.d_beta;
-                param.d_beta = beta_protocol(((double) step+1) / ((double) param.d_J_steps), beta0, param.d_J_beta_target);
+                beta_old = forw_beta[step];
+                param.d_beta = forw_beta[step + 1];
                 dbeta = param.d_beta - beta_old;
                 plaquette(&GC, &geo, &param, &plaqs, &plaqt);
                 act = 1 - 0.5 * (plaqs + plaqt);
@@ -183,11 +195,30 @@ void real_main(char *in_file)
           fprintf(workfilep, "%.12g\n", integral_spline(plaq_spline, forw_beta[step+1]));
         }
         fprintf(workfilep, "%.12g %.12g\n", forw_beta[param.d_J_steps], forw_plaq[param.d_J_steps]);
+        fflush(workfilep);
 
-        // computation of the gradient of W 
+        // computation of the gradient of W
+        double gradient[MAX_CHEBY_DEG], adding_to_grad[MAX_CHEBY_DEG], factor = 0;
+        for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] = 0;
+        // nabla_theta beta(t = extrema) does not contribute because perpendicular to variational subspace
+        for (int step = 1; step < param.d_J_steps; step++){
+          // nabla_theta beta(t)
+          grad_coef_cheby_pol(x_to_negone_one((double) step, (double) param.d_J_steps, 0.),
+                              MAX_CHEBY_DEG, adding_to_grad);
+          
+          // delta beta * Pi'(beta)
+          factor = (forw_beta[step+1] - forw_beta[step]) * derivative_spline(plaq_spline, forw_beta[step]);
+          // Pi(beta - delta beta) - Pi(beta)
+          factor += forw_plaq[step - 1] - forw_plaq[step];
+
+          for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] += factor * adding_to_grad[i];
+        }
+        project_to_fix_estrema(MAX_CHEBY_DEG, gradient);
+        // for (int i = 0; i < MAX_CHEBY_DEG; i++) printf("%.12g ", gradient[i]);
+        // printf("\n");
 
         // protocol parameters update
-
+        for (int i = 0; i < MAX_CHEBY_DEG; i++) protocol.coef[i] -= param.d_learning_rate * gradient[i];
     }
     // cleaning vectors for training
     free_spline(plaq_spline);
@@ -238,7 +269,8 @@ void print_template_input(void)
     fprintf(fp, "num_jar_ev      10         #number of non-equilibrium evolutions\n");
     fprintf(fp, "num_jar_between  1         #number of updates between the start of each evolution\n");
     fprintf(fp, "num_jar_steps   10         #steps in each out-of-equilibrium evolution\n");
-    fprintf(fp, "jar_beta_target     6.2    #target beta (only for evolutions in beta)\n");
+    fprintf(fp, "jar_beta_target  6.2       #target beta (only for evolutions in beta)\n");
+    fprintf(fp, "learning_rate    0.1       #target beta (only for evolutions in beta)\n");
     fprintf(fp,"\n");
     fprintf(fp,"# Simulations parameters\n");
     fprintf(fp, "beta  5.705\n");

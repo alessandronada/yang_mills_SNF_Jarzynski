@@ -31,6 +31,7 @@ typedef struct GParam {
   int d_J_dmeas;	         // steps between each measurement during evolution
   double d_J_beta_target;  // target beta, only for evolutions in beta
   int d_J_nepochs;         // number of epochs for training
+  double d_learning_rate;  // learning rate for the protocol training
 	
 	// hierarchical update (parallel tempering)
 	int d_N_hierarc_levels; // number of hierarchical levels

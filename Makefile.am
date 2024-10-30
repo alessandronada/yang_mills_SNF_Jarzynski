@@ -85,7 +85,9 @@ u1 = ./include/u1.h \
      ./lib/u1_upd.c
 
 train_interpolator = ./include/spline.h \
-                     ./lib/spline.c
+                     ./lib/spline.c \
+                     ./include/cheby_pol.h \
+                     ./lib/cheby_pol.c
 
 conf_check_SOURCES=./src/conf_check.c \
                    $(align) \

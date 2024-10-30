@@ -91,6 +91,7 @@ void readinput(char *in_file, GParam *param)
     param->d_J_dmeas = 0;
     param->d_J_beta_target = 6.0;
 		param->d_J_nepochs = 1;
+    param->d_learning_rate = 0.1;
 
 		// default = do not compute chi_prime
 		param->d_chi_prime_meas = 0;
@@ -615,6 +616,18 @@ void readinput(char *in_file, GParam *param)
             }
             param->d_J_dmeas = temp_i;
             }
+           else if (strncmp(str, "learning_rate", 13) == 0)
+           {
+            {
+            err = fscanf(input, "%lf", &temp_d);
+            if (err != 1)
+            {
+                fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+            param->d_learning_rate = temp_d;
+            }
+           }
            else if(strncmp(str, "swap_acc_file", 13)==0)
                   { 
                   err=fscanf(input, "%s", temp_str);
@@ -1381,7 +1394,8 @@ void print_parameters_j_train_beta(const GParam* const param, time_t start, time
 	fprintf(fp, "number of out-of-equilibrium evolutions: %d\n", param->d_J_evolutions);
 	fprintf(fp, "number of out-of-equilibrium steps in each evolution: %d\n", param->d_J_steps);
 	fprintf(fp, "number of relax updates between evolutions: %d\n", param->d_J_between);
-  fprintf(fp, "number of steps between measurements during evolution: %d\n", param->d_J_dmeas);
+	fprintf(fp, "learning rate for protocol training: %f\n", param->d_learning_rate);
+  // fprintf(fp, "number of steps between measurements during evolution: %d\n", param->d_J_dmeas);
 	fprintf(fp, "\n\n");
 
 	fprintf(fp, "beta: %.10lf\n", param->d_beta);
@@ -1391,10 +1405,10 @@ void print_parameters_j_train_beta(const GParam* const param, time_t start, time
 #endif
 	fprintf(fp, "\n");
 
-	fprintf(fp, "sample:    %d\n", param->d_sample);
+	// fprintf(fp, "sample:    %d\n", param->d_sample);
 	fprintf(fp, "thermal:   %d\n", param->d_thermal);
 	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
-	fprintf(fp, "measevery: %d\n", param->d_measevery);
+	// fprintf(fp, "measevery: %d\n", param->d_measevery);
 	fprintf(fp, "\n");
 
 	fprintf(fp, "start:                   %d\n", param->d_start);
