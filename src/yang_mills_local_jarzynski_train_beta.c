@@ -128,6 +128,13 @@ void real_main(char *in_file)
           forw_beta[step] = evaluate_cheby_pol(&protocol, x_to_negone_one((double) step, (double) param.d_J_steps, 0.));
         }
 
+        char epoch_fn[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];;
+        strcpy(epoch_fn, param.d_data_file);
+        sprintf(aux, "%d", epoch);
+        strcat(epoch_fn, aux);
+
+        FILE* epoch_fptr = fopen(epoch_fn, "w");
+
         // loop on evolutions
         for (count = 0; count < param.d_J_evolutions; count++)
         {
@@ -144,6 +151,7 @@ void real_main(char *in_file)
             // store the starting configuration of the evolution
             copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
 
+            fprintf(epoch_fptr, "%d ", count);
             // non-equilibrium evolution
             for (step = 0; step < param.d_J_steps; step++)
             {
@@ -155,6 +163,7 @@ void real_main(char *in_file)
                 act = 1 - 0.5 * (plaqs + plaqt);
                 act *= (double) (6 * param.d_volume);
                 W += dbeta * act;
+                fprintf(epoch_fptr, "%lf ", W);
 
                 // save 0.5 *( plaqs + plaqt ) in array
                 forw_plaq[step] += 0.5 * (plaqs + plaqt);
@@ -165,9 +174,11 @@ void real_main(char *in_file)
                 // perform a single step of updates with new beta
                 update(&GC, &geo, &param);
             }
+            fprintf(epoch_fptr, "\n"); 
+            fflush(epoch_fptr);
 
             plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-            forw_plaq[param.d_J_steps] = 0.5 * (plaqs + plaqt);
+            forw_plaq[param.d_J_steps] = 0.5 * (plaqs + plaqt); // 3+1 D only !!!
 
             // recover the starting configuration of the evolution
             copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
@@ -198,27 +209,28 @@ void real_main(char *in_file)
         fflush(workfilep);
 
         // computation of the gradient of W
-        double gradient[MAX_CHEBY_DEG], adding_to_grad[MAX_CHEBY_DEG], factor = 0;
+        double gradient[MAX_CHEBY_DEG], adding_to_grad1[MAX_CHEBY_DEG], adding_to_grad2[MAX_CHEBY_DEG], factor = 0;
         for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] = 0;
         // nabla_theta beta(t = extrema) does not contribute because perpendicular to variational subspace
         for (int step = 1; step < param.d_J_steps; step++){
-          // nabla_theta beta(t)
-          grad_coef_cheby_pol(x_to_negone_one((double) step, (double) param.d_J_steps, 0.),
-                              MAX_CHEBY_DEG, adding_to_grad);
+          // nabla_theta beta and beta dot
+          grad_coef_cheby_pol_and_prime(x_to_negone_one((double) step, (double) param.d_J_steps, 0.),
+                                        MAX_CHEBY_DEG, adding_to_grad1, adding_to_grad2);
           
-          // delta beta * Pi'(beta)
-          factor = (forw_beta[step+1] - forw_beta[step]) * derivative_spline(plaq_spline, forw_beta[step]);
-          // Pi(beta - delta beta) - Pi(beta)
-          factor += forw_plaq[step - 1] - forw_plaq[step];
+          factor = -derivative_spline(plaq_spline, forw_beta[step]) * eval_cheby_pol_withgrad(&protocol, adding_to_grad2);
+          for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] += factor * adding_to_grad1[i];
 
-          for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] += factor * adding_to_grad[i];
+          factor = -forw_plaq[step];
+          for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] += factor * adding_to_grad2[i];
         }
         project_to_fix_estrema(MAX_CHEBY_DEG, gradient);
-        // for (int i = 0; i < MAX_CHEBY_DEG; i++) printf("%.12g ", gradient[i]);
-        // printf("\n");
+        for (int i = 0; i < MAX_CHEBY_DEG; i++) printf("%.12g ", gradient[i]);
+        printf("\n");
 
         // protocol parameters update
         for (int i = 0; i < MAX_CHEBY_DEG; i++) protocol.coef[i] -= param.d_learning_rate * gradient[i];
+
+        fclose(epoch_fptr);
     }
     // cleaning vectors for training
     free_spline(plaq_spline);
@@ -291,6 +303,7 @@ void print_template_input(void)
     fprintf(fp, "# output files\n");
     fprintf(fp, "conf_file             conf.dat\n");
     fprintf(fp, "log_file              log.dat\n");
+    fprintf(fp, "data_file             dati.dat\n");
     fprintf(fp, "work_file             work.dat\n");
     fprintf(fp, "\n");
     fprintf(fp, "randseed 0    # (0=time)\n");

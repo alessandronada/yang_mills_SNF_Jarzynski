@@ -106,7 +106,6 @@ void free_spline(spline* s){
     if (!(s->_free_flag & 2)) free(s->coeff[0]);
     for (int k = 1; k < COEF_NUM; k++){
         free(s->coeff[k]);
-        printf("%d", k);
     }
     free(s->coeff);
 

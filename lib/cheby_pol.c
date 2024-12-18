@@ -52,12 +52,40 @@ void grad_coef_cheby_pol(double x, int len, double *gradient)
     }
 }
 
+// The value of the base and derivative of the base in X (T(X) and T'(X))
+void grad_coef_cheby_pol_and_prime(double x, int len, double *gradient, double *gradient_prime)
+/*
+Computes the values and derivatives in X of the first LEN Chebyshv polynomials
+and stores them in GRADIENT and GRADIENT_PRIME
+(gradient with respect to parameters of the derivative of the linear
+combination and its derivative)
+
+GRADIENT and GRADIENT_PRIME are overwritten (can be uninitialized)
+GRADIENT and GRADIENT_PRIME must point to at least LEN long arrays of double
+*/
+{
+    double T_now = 1, U_prec = 0, T_next = x;
+
+    gradient[0] = 1;
+    gradient_prime[0] = 0;
+    
+    for (int i = 1; i < len; i++) {
+        U_prec = x * U_prec + T_now;
+        T_now = T_next;
+        T_next = x * T_now - (1 - x * x) * U_prec;
+
+        gradient[i] = T_now;
+        gradient_prime[i] = i * U_prec;
+    }
+}
+
 // Linear map from [MAX; MIN] into [-1; 1] evaluated in VAL
 double x_to_negone_one(double val, double max, double min)
 {
     return (2 * val - max - min) / (max - min);
 }
 
+// Project to the iperplane delta p(-1) = delta p(1) = 0, i.e. sum even = sum odd = 0
 void project_to_fix_estrema(int len, double *gradient)
 {
     double even_proj = 0, odd_proj = 0;

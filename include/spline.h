@@ -10,7 +10,7 @@
 typedef struct spline{
     int nodes_num;
     double* x;
-    double** coeff;
+    double** coeff; // coeff[0][nodes_num], coeff[1:4][nodes_num-1]
 
     const char _free_flag;
 } spline;
