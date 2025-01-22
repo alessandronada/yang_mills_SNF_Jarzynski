@@ -178,7 +178,7 @@ void real_main(char *in_file)
             fflush(epoch_fptr);
 
             plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-            forw_plaq[param.d_J_steps] = 0.5 * (plaqs + plaqt); // 3+1 D only !!!
+            forw_plaq[param.d_J_steps] += 0.5 * (plaqs + plaqt); // 3+1 D only !!!
 
             // recover the starting configuration of the evolution
             copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
