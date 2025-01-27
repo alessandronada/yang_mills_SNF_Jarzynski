@@ -159,18 +159,20 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
 
 double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param)
 {
-	int r, i, j;
+	int r, i, j, aux_i;
 	double re_tr_plaq, K, act;
 
 	// for each value of defect_dir, determine the three orthogonal directions to it
 	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
 
+	// sum not over all the plaquettes of the lattice, but only those with one direction being the defect direction
 	act = 0.0;
+	i = param->d_defect_dir;
 	for (r = 0; r < (param->d_volume); r++)
-		for (i = 0; i < STDIM - 1; i++)
+		for (aux_i = 0; aux_i < STDIM - 1; aux_i++)
 		{
 			// contribution to action of site r on plane (i,j)
-			j = perp_dir[param->d_defect_dir][i];
+			j = perp_dir[param->d_defect_dir][aux_i];
 
 			// plaquettes
 			re_tr_plaq = plaquettep(GC, geo, param, r, i, j); // (Re Tr plaq(r,i,j) )/N_c
