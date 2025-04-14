@@ -458,6 +458,16 @@ void readinput(char *in_file, GParam *param)
                     }
                   strcpy(param->d_work_file, temp_str);
                   }
+      else if(strncmp(str, "protocol_file", 13) == 0)
+                  {
+                  err=fscanf(input, "%s", temp_str);
+                  if(err!=1)
+                    {
+                    fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                    }
+                  strcpy(param->d_protocol_file, temp_str);
+                  }
            else if(strncmp(str, "chiprime_data_file", 18)==0)
                   { 
                   err=fscanf(input, "%s", temp_str);

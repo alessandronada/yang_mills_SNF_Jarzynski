@@ -18,7 +18,6 @@
 #include"../include/gparam.h"
 #include"../include/random.h"
 #include"../include/spline.h"
-#include"../include/cheby_pol.h"
 
 double beta_protocol(double t, double b0, double bt)
 {
@@ -52,6 +51,43 @@ void training_clean(double* forw_plaq, double* forw_work, double* forw_beta)
   free(forw_work);
   free(forw_plaq);
   free(forw_beta);
+}
+
+double local_work_min(double beta_prec, double beta_guess, double beta_next, spline *plaq_spline, double eps) {
+  /*Look for a minimum of work, by maximizing the estimation of -W(beta[i]) given beta[i-1] e beta[i+1]
+  A maximum is apoint where the derivative changes from positive to negative
+  */
+  double plaq_prec = evaluate_spline(plaq_spline, beta_prec);
+  // -W'(beta) = plaq(beta_prec) - plaq(beta) + (beta_next - beta) * plaq'(beta)
+  double deriv_val = plaq_prec - evaluate_spline(plaq_spline, beta_guess) + 
+                     (beta_next - beta_guess) * derivative_spline(plaq_spline, beta_guess);
+  double beta_min = beta_prec;
+  double beta_max = beta_next;
+
+  int count = 0;
+  printf("%lf %lf, %lf, %lf ", plaq_prec, evaluate_spline(plaq_spline, beta_guess),  
+                     (beta_next - beta_guess), derivative_spline(plaq_spline, beta_guess));
+  while (fabs(deriv_val) > eps)
+  {
+    if (deriv_val > 0){ // f'(beta) > 0 ==> beta to the left of the maximum
+      beta_min = beta_guess;
+      beta_guess = 0.5 * (beta_guess + beta_max);
+    }
+    else {
+      beta_max = beta_guess;
+      beta_guess = 0.5 * (beta_guess + beta_min);
+    }
+    deriv_val = plaq_prec - evaluate_spline(plaq_spline, beta_guess) + 
+                (beta_next - beta_guess) * derivative_spline(plaq_spline, beta_guess);
+    
+    count++;
+    if (count > 1000) {
+      printf("minimization failed! \n");
+      return 0.5 * (beta_next + beta_prec);
+    }
+  }
+  printf("minimization count: %d \n", count);
+  return beta_guess;
 }
 
 void real_main(char *in_file)
@@ -108,32 +144,8 @@ void real_main(char *in_file)
 
     spline* plaq_spline = new_spline(param.d_J_steps+1, forw_beta, forw_plaq);
 
-    cheby_pol protocol;
-    init_cheby_pol(&protocol);
-
-    FILE* protocol_fp = fopen(param.d_protocol_file, "r");
-    if (param.d_start == 2 && protocol_fp != NULL) { // try to read from file
-      // would be better to read the last 2 lines for future uses
-      init_cheby_pol_from_file(&protocol, protocol_fp);
-
-      // make sure we go from beta0 to beta_target
-      double norm = param.d_J_beta_target - beta0;
-      norm /= evaluate_cheby_pol(&protocol, 1) - evaluate_cheby_pol(&protocol, -1);
-      for (int i = 0; i < MAX_CHEBY_DEG; i++) protocol.coef[i] *= norm; // right amplitude
-
-      double diff = beta0 - evaluate_cheby_pol(&protocol, -1);
-      protocol.coef[0] += diff; // right constant
-
-      cheby_pol_set_max_deg(&protocol, MAX_CHEBY_DEG); // just to be shure
-
-      printf("beta extrema: %lf %lf \n", evaluate_cheby_pol(&protocol, -1), evaluate_cheby_pol(&protocol, 1));
-      printf("compare with: %lf %lf \n", beta0, param.d_J_beta_target);
-    }
-    else { // linear protocol
-      protocol.coef[0] = 0.5 * (param.d_J_beta_target + beta0);
-      protocol.coef[1] = 0.5 * (param.d_J_beta_target - beta0);
-    }
     forw_beta[0] = beta0;
+    for (int  i = 1; i < param.d_J_steps; i++) forw_beta[i] = beta_protocol((double) i / param.d_J_steps, beta0, param.d_J_beta_target);
     forw_beta[param.d_J_steps] = param.d_J_beta_target;
 
     // loop on training steps
@@ -141,17 +153,6 @@ void real_main(char *in_file)
     {
         // inint vectors for training
         training_init(param.d_J_steps, forw_plaq, forw_work);
-
-        // TODO move this in training init
-        for (step =  param.d_J_steps-1; step > 0; step--) {
-          forw_beta[step] = evaluate_cheby_pol(&protocol, x_to_negone_one((double) step, (double) param.d_J_steps, 0.));
-        }
-
-        protocol_fp = fopen(param.d_protocol_file, "a");
-        if (protocol_fp != NULL) {
-          print_cheby_coef(&protocol, protocol_fp);
-          fclose(protocol_fp);
-        }
 
         char epoch_fn[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];;
         strcpy(epoch_fn, param.d_data_file);
@@ -233,27 +234,15 @@ void real_main(char *in_file)
         fprintf(workfilep, "%.12g %.12g\n", forw_beta[param.d_J_steps], forw_plaq[param.d_J_steps]);
         fflush(workfilep);
 
-        // computation of the gradient of W
-        double gradient[MAX_CHEBY_DEG], adding_to_grad1[MAX_CHEBY_DEG], adding_to_grad2[MAX_CHEBY_DEG], factor = 0;
-        for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] = 0;
-        // nabla_theta beta(t = extrema) does not contribute because perpendicular to variational subspace
-        for (int step = 1; step < param.d_J_steps; step++){
-          // nabla_theta beta and beta dot
-          grad_coef_cheby_pol_and_prime(x_to_negone_one((double) step, (double) param.d_J_steps, 0.),
-                                        MAX_CHEBY_DEG, adding_to_grad1, adding_to_grad2);
-          
-          factor = -derivative_spline(plaq_spline, forw_beta[step]) * eval_cheby_pol_withgrad(&protocol, adding_to_grad2);
-          for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] += factor * adding_to_grad1[i];
+        // update the protocol 
+        for (int step = 1; step < param.d_J_steps; step++) {
+          double beta_prec = forw_beta[step - 1];
+          double beta_next = forw_beta[step + 1];
 
-          factor = -forw_plaq[step];
-          for (int i = 0; i < MAX_CHEBY_DEG; i++) gradient[i] += factor * adding_to_grad2[i];
+          double beta_curr = forw_beta[step]; // in case we ant 
+          // want to minimize: -(beta - beta_prec) * plaq_spline(beta_prec) - (beta_next - beta) * plaq_spline(beta) = -f(beta)
+          forw_beta[step] = local_work_min(beta_prec, beta_curr, beta_next, plaq_spline, MIN_VALUE);
         }
-        project_to_fix_estrema(MAX_CHEBY_DEG, gradient);
-        for (int i = 0; i < MAX_CHEBY_DEG; i++) printf("%.12g ", gradient[i]);
-        printf("\n");
-
-        // protocol parameters update
-        for (int i = 0; i < MAX_CHEBY_DEG; i++) protocol.coef[i] -= param.d_learning_rate * gradient[i];
 
         fclose(epoch_fptr);
     }
@@ -330,7 +319,6 @@ void print_template_input(void)
     fprintf(fp, "log_file              log.dat\n");
     fprintf(fp, "data_file             dati.dat\n");
     fprintf(fp, "work_file             work.dat\n");
-    fprintf(fp, "protocol_file         protocol.dat\n");
     fprintf(fp, "\n");
     fprintf(fp, "randseed 0    # (0=time)\n");
     fclose(fp);

@@ -14,6 +14,9 @@ typedef struct cheby_pol{
 void init_cheby_pol(cheby_pol* p);
 void cheby_pol_set_max_deg(cheby_pol* p, int deg);
 
+void print_cheby_coef(cheby_pol* p, FILE* out);
+void init_cheby_pol_from_file(cheby_pol* p, FILE* in);
+
 double evaluate_cheby_pol(cheby_pol const * const p, double x);
 double evaluete_cheby_pol_prime(cheby_pol const * const p, double x);
 void cheby_pol_eval_and_prime(cheby_pol const * const p, double x, double* value, double* deriv);

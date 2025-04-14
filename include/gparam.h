@@ -78,6 +78,7 @@ typedef struct GParam {
   char d_conf_file[STD_STRING_LENGTH];
   char d_data_file[STD_STRING_LENGTH];
   char d_work_file[STD_STRING_LENGTH];
+  char d_protocol_file[STD_STRING_LENGTH];
 	char d_chiprime_file[STD_STRING_LENGTH]; // print chi prime measures
 	char d_topcharge_tprof_file[STD_STRING_LENGTH]; // print topological charge time correlator measures
   char d_log_file[STD_STRING_LENGTH];

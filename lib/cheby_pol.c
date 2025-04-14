@@ -17,6 +17,38 @@ void cheby_pol_set_max_deg(cheby_pol *p, int deg)
     p->_max_deg = deg;
 }
 
+void print_cheby_coef(cheby_pol *p, FILE *out)
+{
+    fprintf(out, "%d \n", p->_max_deg);
+    for (int i = 0; i < p->_max_deg; i++) fprintf(out, "%lf ", p->coef[i]);
+    fprintf(out, "\n");
+}
+
+void init_cheby_pol_from_file(cheby_pol *p, FILE *in)
+{
+    int read = fscanf(in, "%d \n", &(p->_max_deg));
+    if (read != 1) {
+        fprintf(stderr, "unable to read cheby_pol max deg \n");
+        exit(EXIT_FAILURE);
+    }
+    if (p->_max_deg > MAX_CHEBY_DEG) {
+        fprintf(stderr, "read cheby_pol max deg (%d) exceeds MAX_CHEBY_DEG (%d) \n", p->_max_deg, MAX_CHEBY_DEG);
+        exit(EXIT_FAILURE);
+    }
+    for (int i = 0; i < p->_max_deg; i++) {
+        if (read == 1) read = fscanf(in, "%lf ", &(p->coef[i]));
+    }
+
+    if (read != 1) {
+        fprintf(stderr, "problems while reading cheby_pol coefficients \n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = p->_max_deg; i < MAX_CHEBY_DEG; i++) {
+        p->coef[i] = 0;
+    }
+}
+
 // evaluate P in X
 double evaluate_cheby_pol(cheby_pol const *const p, double x)
 {   
