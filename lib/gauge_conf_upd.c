@@ -1755,13 +1755,14 @@ void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
 
    equal(smeared_link, link);
    times_equal(smeared_link, &staple); // link = exp(i Q(Omega)) * link
+   unitarize(smeared_link); // just correct numerical error
 }
 
 void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
                                            Geometry const * const geo,
                                            long st_position,
                                            int dir, // mu in https://arxiv.org/pdf/hep-lat/0311018
-                                           double rho[STDIM], // rho_nu in https://arxiv.org/pdf/hep-lat/0311018
+                                           double const rho[STDIM], // rho_nu in https://arxiv.org/pdf/hep-lat/0311018
                                            GAUGE_GROUP* smeared_link)
 {
    // M[2*(STDIM-1)+1]
@@ -1789,6 +1790,7 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
 
    equal(smeared_link, link);
    times_equal(smeared_link, &staple); // link = exp(i Q(Omega)) * link
+   unitarize(smeared_link);
 }
 
 // n step of ape smearing with parameter alpha

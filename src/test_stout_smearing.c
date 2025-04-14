@@ -31,6 +31,7 @@ void test_taexp_SU3(SuN const * const test_A) {
         // printf("%lf + %lfi, %lf + %lfi \n",
         //     creal(SUN_expA.comp[i]), cimag(SUN_expA.comp[i]), creal(SU3_expA.comp[i]), cimag(SU3_expA.comp[i]));
         double elem = cabs(SUN_expA.comp[i] - SU3_expA.comp[i]);
+        if (elem != elem) printf("NaN enecountered! \n");
         if (elem > elem_max) {
             elem_max = elem;
         }
@@ -39,20 +40,80 @@ void test_taexp_SU3(SuN const * const test_A) {
     printf("Max difference between SUN_expA and SU3_expA: %e\n", elem_max);
 }
 
+void isotropic_smear_conf_for_test(Gauge_Conf const * const source,
+                              Gauge_Conf* smeared,
+                              GParam const * const param,
+                              Geometry const * const geo,
+                              double const rho) {
+    for (int dir = 0; dir < STDIM; dir++) {
+        for (long r = 0; r < (param->d_volume)/2; r++) {
+            isotropic_stout_smearing_singlelink(source, param, geo, r, dir, rho, &(smeared->lattice[r][dir]));
+        }
+        for (long r = (param->d_volume)/2; r < param->d_volume; r++) {
+            isotropic_stout_smearing_singlelink(source, param, geo, r, dir, rho, &(smeared->lattice[r][dir]));
+        }
+    }
+}
+
+void anisotropic_smear_conf_for_test(Gauge_Conf const * const source,
+                                     Gauge_Conf* smeared,
+                                     GParam const * const param,
+                                     Geometry const * const geo,
+                                     double *rho) {
+    for (int dir = 0; dir < STDIM; dir++) {
+        for (long r = 0; r < (param->d_volume)/2; r++) {
+            anisotropic_stout_smearing_singlelink(source, geo, r, dir, rho + dir * STDIM, &(smeared->lattice[r][dir]));
+        }
+        for (long r = (param->d_volume)/2; r < param->d_volume; r++) {
+            anisotropic_stout_smearing_singlelink(source, geo, r, dir, rho + dir * STDIM, &(smeared->lattice[r][dir]));
+        }
+    }
+}
+
 void real_main(char* in_file) {
+    
     GParam param;
     readinput(in_file, &param);
 	initrand(param.d_randseed);
 
+    print_parameters_local(&param, 0, 0);
+
+    Geometry geo;
+	init_indexing_lexeo();
+    init_geometry(&geo, &param);
+
+    Gauge_Conf GC, smeared_GC;
+    init_gauge_conf(&GC, &param);
+    init_gauge_conf_from_gauge_conf(&smeared_GC, &GC, &param);
+
     // Test the taexp function for SU(3)
     SuN A;
     one(&A);
+    A.comp[1] += 0.1;
     test_taexp_SU3(&A);
 
     rand_matrix_SuN(&A);
     test_taexp_SU3(&A);
 
     // Add any additional tests or functionality here
+    double rho[STDIM*STDIM];
+    for (int mu = 0; mu < STDIM; mu++) {
+        printf("%d ", mu); fflush(stdout);
+        for (int nu = 0; nu < STDIM; nu++) {
+            rho[mu*STDIM + nu] = casuale();
+        }
+    }
+    // printf("%f \n", rho[0]);
+
+    printf("%f ", creal(GC.lattice[0][0].comp[0]));
+    isotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho[0]);
+    printf("%f ", creal(smeared_GC.lattice[0][0].comp[0]));
+    anisotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho);
+    printf("%f \n", creal(smeared_GC.lattice[0][0].comp[0]));
+
+    free_gauge_conf(&GC, &param);
+    free_gauge_conf(&smeared_GC, &param);
+    free_geometry(&geo, &param);
 }
 
 int main(int argc, char **argv) {

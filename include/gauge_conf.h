@@ -446,7 +446,7 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
                       Geometry const * const geo,
                       long st_position,
                       int dir, 
-                      double rho[STDIM],
+                      double const rho[STDIM],
                       GAUGE_GROUP* smeared_link);
 									
 // in gauge_conf_paral_temp.c
