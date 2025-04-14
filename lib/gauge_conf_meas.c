@@ -749,7 +749,7 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
 
      ris=topcharge(GC, geo, param);
 		 if (param->d_chi_prime_meas == 1) ris2=topo_chi_prime(GC, geo, param);
-		 else (void) ris2;
+		 else ris2 = 0.;
      plaquette(GC, geo, param, &plaqs, &plaqt);
   
      for(iter=0; iter<(param->d_coolrepeat); iter++)

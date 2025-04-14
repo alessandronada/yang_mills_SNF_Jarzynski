@@ -430,6 +430,24 @@ void ape_smearing(Gauge_Conf *GC,
                   GParam const *const param,
                   double alpha,
                   int n);
+void calcstaples_wilson_nosum(Gauge_Conf const * const GC,
+                    Geometry const * const geo,
+                    long r,
+                    int i,
+                    GAUGE_GROUP *M);
+void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
+                      GParam const * const param,
+                      Geometry const * const geo,
+                      long st_position,
+                      int dir,
+                      double rho,
+                      GAUGE_GROUP* smeared_link);
+void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
+                      Geometry const * const geo,
+                      long st_position,
+                      int dir, 
+                      double rho[STDIM],
+                      GAUGE_GROUP* smeared_link);
 									
 // in gauge_conf_paral_temp.c
 void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,

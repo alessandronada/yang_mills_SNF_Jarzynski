@@ -381,6 +381,8 @@ void ta_SuN(SuN *A);
 // eponential of the traceless antihermitian part
 void taexp_SuN(SuN *A);
 
+// eponential of the traceless antihermitian part specifically for SU(3)
+void taexp_Su3(SuN *A);
 
 // return 0 if matrix is traceless antihermitian, 1 otherwise
 int ta_check_SuN(const SuN * const A);

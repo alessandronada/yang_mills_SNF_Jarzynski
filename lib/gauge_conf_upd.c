@@ -1347,7 +1347,7 @@ void hierarchical_update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * 
 void single_conf_hierarchical_update(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
 	Rectangle const * const most_update, Rectangle const * const clover_rectangle)
 {
-	int i;
+	// int i;
 	int start_hierarc = 0; // first hierarc level is  0
 
 	// full update + hierarchical update + swaps and translations after every sweep
@@ -1758,7 +1758,6 @@ void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
 }
 
 void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
-                                           GParam const * const param,
                                            Geometry const * const geo,
                                            long st_position,
                                            int dir, // mu in https://arxiv.org/pdf/hep-lat/0311018

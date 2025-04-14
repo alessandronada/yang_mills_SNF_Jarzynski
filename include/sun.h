@@ -790,7 +790,7 @@ inline void ta_SuN(SuN * restrict A)
   equal_SuN(A, &aux);
   }
 
-#if NCOLOR==3 // just to be sure
+// #if NCOLOR==3 // just to be sure
 // https://arxiv.org/pdf/hep-lat/0311018 SEC III
 inline void taexp_Su3(SuN * restrict A)
 {
@@ -800,37 +800,56 @@ inline void taexp_Su3(SuN * restrict A)
 
    SuN aux, aux_sqr;
    equal_SuN(&aux, A);
-   ta_SuN(&aux);
-   times_equal_complex_SuN(&aux, I); // aux i s hermitian (eq. (2))
+   ta_SuN(&aux); // aux = 0.5 * (A - A^dagger - trace)
+   times_equal_complex_SuN(&aux, -I); // aux is hermitian (eq. (2))
 
    double c0 = creal(det_SuN(&aux));
+   int sign_c0;
+   if (c0 >= 0) sign_c0 = 1;
+   else {
+      sign_c0 = -1;
+      c0 = -c0;
+   }
 
    equal_SuN(&aux_sqr, &aux);
    times_equal_SuN(&aux_sqr, &aux);
 
-   double c1 = (3. / 2.) * retr_SuN(&aux_sqr);
-   double c0_max = 2. * pow(c0 / 3., 1.5);
-   double theta = acos(c0 / c0_max);
+   double sqrt_c1_third = sqrt(0.5 * retr_SuN(&aux_sqr)); // retr(.) = 1/3 Tr(.)
+   double c0_max = 2. * pow(sqrt_c1_third, 3);
+   double theta_third = acos(c0 / c0_max) / 3.;
 
-   double u = sqrt(c1 / 3.) * cos(theta / 3.);
-   double w = sqrt(c1) * sin(theta / 3.);
-   double xi_0_w = abs(w) > 0.05 ?
+   double u = sqrt_c1_third * cos(theta_third);
+   double w = sqrt(3.) * sqrt_c1_third * sin(theta_third);
+   double xi_0_w = fabs(w) > 0.05 ?
       sin(w) / w :
       1 - w * w / 6. * (1 - w * w / 20. * (1 - w * w / 42.));
 
    double h_real[3], h_imag[3];
+   
+   double cos_u = cos(u); // useful terms
+   double cos_w = cos(w);
+   double sin_u = sin(u);
+   double cos_2u = cos(2 * u);
+   double sin_2u = sin(2 * u);
+   double u_sqr = u * u;
+   double w_sqr = w * w;
 
-   h_real[0] = (u*u - w*w) * cos(2 * u) + (8 * u * u * cos(w)) * cos(u) + 2 * u * xi_0_w * (3 * u*u + w*w) * sin(u);
-   h_imag[0] = (u*u - w*w) * sin(2 * u) - (8 * u * u * cos(w)) * sin(u) + 2 * u * xi_0_w * (3 * u*u + w*w) * cos(u);
+   h_real[0] = (u_sqr - w_sqr) * cos_2u + (8 * u_sqr * cos_w) * cos_u + 2 * u * xi_0_w * (3 * u_sqr + w_sqr) * sin_u;
+   h_imag[0] = (u_sqr - w_sqr) * sin_2u - (8 * u_sqr * cos_w) * sin_u + 2 * u * xi_0_w * (3 * u_sqr + w_sqr) * cos_u;
 
-   h_real[1] = (2 * u) * cos(2 * u) - (2 * u * cos(w)) * cos(u) + (3 * u*u - w*w) * xi_0_w * sin(u);
-   h_imag[1] = (2 * u) * sin(2 * u) + (2 * u * cos(w)) * sin(u) + (3 * u*u - w*w) * xi_0_w * cos(u);
+   h_real[1] = (2 * u) * cos_2u - (2 * u * cos_w) * cos_u + (3 * u_sqr - w_sqr) * xi_0_w * sin_u;
+   h_imag[1] = (2 * u) * sin_2u + (2 * u * cos_w) * sin_u + (3 * u_sqr - w_sqr) * xi_0_w * cos_u;
 
-   h_real[2] = cos(2 * u) - cos(w) * cos(u) - 3 * u * xi_0_w * sin(u);
-   h_imag[2] = sin(2 * u) + cos(w) * sin(u) - 3 * u * xi_0_w * cos(u);
+   h_real[2] = cos_2u - cos_w * cos_u - 3 * u * xi_0_w * sin_u;
+   h_imag[2] = sin_2u + cos_w * sin_u - 3 * u * xi_0_w * cos_u;
+
+   // f_j(-c0) = (-1)^j f_j*(c0), eq(34)
+   h_imag[0] *= sign_c0;
+   h_real[1] *= sign_c0;
+   h_imag[2] *= sign_c0;
    
    // h -> f;
-   double denominator = 1. / (9 * u*u - w*w);
+   double denominator = 1. / (9 * u_sqr - w_sqr);
    for (int i = 0; i < 3; i++)
    {
       h_real[i] *= denominator;
@@ -846,7 +865,7 @@ inline void taexp_Su3(SuN * restrict A)
    times_equal_complex_SuN(&aux_sqr, h_real[2] + h_imag[2] * I);
    plus_equal_SuN(A, &aux_sqr);
 }
-#endif // NCOLOR==3
+// #endif // NCOLOR==3
 
 // eponential of the traceless antihermitian part
 inline void taexp_SuN(SuN * restrict A)
@@ -867,6 +886,18 @@ inline void taexp_SuN(SuN * restrict A)
   // exp(x)=1+x(1+x/2(1+x/3*(1+x/4*(1+x/5*....
 
   equal_SuN(&ris, &aux);
+  times_equal_real_SuN(&ris, 0.125);
+  plus_equal_SuN(&ris, &uno);
+
+  times_equal_SuN(&ris, &aux);
+  times_equal_real_SuN(&ris, 0.142857142857142857142857);
+  plus_equal_SuN(&ris, &uno);
+
+  times_equal_SuN(&ris, &aux);
+  times_equal_real_SuN(&ris, 0.16666666666666666666);
+  plus_equal_SuN(&ris, &uno);
+
+  times_equal_SuN(&ris, &aux);
   times_equal_real_SuN(&ris, 0.2);
   plus_equal_SuN(&ris, &uno);
 

@@ -1,0 +1,123 @@
+#include"../include/macro.h"
+
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<time.h>
+
+#ifdef OPENMP_MODE
+  #include<omp.h>
+#endif
+
+#include"../include/function_pointers.h"
+#include"../include/gauge_conf.h"
+#include"../include/geometry.h"
+#include"../include/gparam.h"
+#include"../include/random.h"
+#include"../include/sun.h"
+
+void test_taexp_SU3(SuN const * const test_A) {
+    printf("Testing taexp for SU(3)\n");
+    SuN SUN_expA, SU3_expA;
+
+    equal_SuN(&SUN_expA, test_A);
+    taexp_SuN(&SUN_expA);
+
+    equal_SuN(&SU3_expA, test_A);
+    taexp(&SU3_expA); // should call taexp_Su3
+
+    double elem_max = 0.;
+    for (int i = 0; i < NCOLOR * NCOLOR; i++) {
+        // printf("%lf + %lfi, %lf + %lfi \n",
+        //     creal(SUN_expA.comp[i]), cimag(SUN_expA.comp[i]), creal(SU3_expA.comp[i]), cimag(SU3_expA.comp[i]));
+        double elem = cabs(SUN_expA.comp[i] - SU3_expA.comp[i]);
+        if (elem > elem_max) {
+            elem_max = elem;
+        }
+    }
+
+    printf("Max difference between SUN_expA and SU3_expA: %e\n", elem_max);
+}
+
+void real_main(char* in_file) {
+    GParam param;
+    readinput(in_file, &param);
+	initrand(param.d_randseed);
+
+    // Test the taexp function for SU(3)
+    SuN A;
+    one(&A);
+    test_taexp_SU3(&A);
+
+    rand_matrix_SuN(&A);
+    test_taexp_SU3(&A);
+
+    // Add any additional tests or functionality here
+}
+
+int main(int argc, char **argv) {
+    if (NCOLOR != 3) {
+        fprintf(stderr, "This test is for SU(3)\n");
+        return EXIT_FAILURE;
+    }
+    char in_file[STD_STRING_LENGTH];
+
+    if(argc != 2)
+      {
+	  printf("\nSU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
+	  printf("Usage: %s input_file\n\n", argv[0]);
+
+	  printf("\nDetails about yang-mills package:\n");
+      printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+      printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
+
+      printf("Compilation details:\n");
+      printf("\tN_c (number of colors): %d\n", NCOLOR);
+      printf("\tST_dim (space-time dimensionality): %d\n", STDIM);
+      printf("\tNum_levels (number of levels): %d\n", NLEVELS);
+      printf("\n");
+      printf("\tINT_ALIGN: %s\n", QUOTEME(INT_ALIGN));
+      printf("\tDOUBLE_ALIGN: %s\n", QUOTEME(DOUBLE_ALIGN));
+
+      #ifdef DEBUG
+        printf("\n\tDEBUG mode\n");
+      #endif
+
+      #ifdef OPENMP_MODE
+        printf("\n\tusing OpenMP with %d threads\n", NTHREADS);
+      #endif
+
+      #ifdef THETA_MODE
+        printf("\n\tusing imaginary theta\n");
+      #endif
+
+      printf("\n");
+
+      #ifdef __INTEL_COMPILER
+        printf("\tcompiled with icc\n");
+      #elif defined(__clang__)
+        printf("\tcompiled with clang\n");
+      #elif defined( __GNUC__ )
+        printf("\tcompiled with gcc version: %d.%d.%d\n",
+                __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+      #endif
+
+    //   print_template_input();
+
+      return EXIT_SUCCESS;
+      }
+    else
+      {
+      if(strlen(argv[1]) >= STD_STRING_LENGTH)
+        {
+        fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
+				return EXIT_SUCCESS;
+        }
+      else
+        {
+            strcpy(in_file, argv[1]);
+    		real_main(in_file);
+    		return EXIT_SUCCESS;
+        }
+      }
+    }
