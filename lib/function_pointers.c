@@ -159,8 +159,11 @@ double (*imtr)(GAUGE_GROUP const * const A) = &imtr_SuN;
 
 void (*unitarize)(GAUGE_GROUP *A) = &unitarize_SuN;
 void (*ta)(GAUGE_GROUP *A) = &ta_SuN;
+#if NCOLOR == 3
+void (*taexp)(GAUGE_GROUP *A) = &taexp_Su3;
+#else
 void (*taexp)(GAUGE_GROUP *A) = &taexp_SuN;
-
+#endif
 void (*print_on_screen)(GAUGE_GROUP const * const A) = &print_on_screen_SuN;
 void (*print_on_file)(FILE *fp, GAUGE_GROUP const * const A) = &print_on_file_SuN;
 void (*print_on_binary_file_bigen)(FILE *fp, GAUGE_GROUP const * const A) = &print_on_binary_file_bigen_SuN;

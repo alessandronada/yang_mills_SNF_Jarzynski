@@ -790,6 +790,63 @@ inline void ta_SuN(SuN * restrict A)
   equal_SuN(A, &aux);
   }
 
+#if NCOLOR==3 // just to be sure
+// https://arxiv.org/pdf/hep-lat/0311018 SEC III
+inline void taexp_Su3(SuN * restrict A)
+{
+#ifdef __INTEL_COMPILER
+   __assume_aligned(&(A->comp), DOUBLE_ALIGN);
+#endif
+
+   SuN aux, aux_sqr;
+   equal_SuN(&aux, A);
+   ta_SuN(&aux);
+   times_equal_complex_SuN(&aux, I); // aux i s hermitian (eq. (2))
+
+   double c0 = creal(det_SuN(&aux));
+
+   equal_SuN(&aux_sqr, &aux);
+   times_equal_SuN(&aux_sqr, &aux);
+
+   double c1 = (3. / 2.) * retr_SuN(&aux_sqr);
+   double c0_max = 2. * pow(c0 / 3., 1.5);
+   double theta = acos(c0 / c0_max);
+
+   double u = sqrt(c1 / 3.) * cos(theta / 3.);
+   double w = sqrt(c1) * sin(theta / 3.);
+   double xi_0_w = abs(w) > 0.05 ?
+      sin(w) / w :
+      1 - w * w / 6. * (1 - w * w / 20. * (1 - w * w / 42.));
+
+   double h_real[3], h_imag[3];
+
+   h_real[0] = (u*u - w*w) * cos(2 * u) + (8 * u * u * cos(w)) * cos(u) + 2 * u * xi_0_w * (3 * u*u + w*w) * sin(u);
+   h_imag[0] = (u*u - w*w) * sin(2 * u) - (8 * u * u * cos(w)) * sin(u) + 2 * u * xi_0_w * (3 * u*u + w*w) * cos(u);
+
+   h_real[1] = (2 * u) * cos(2 * u) - (2 * u * cos(w)) * cos(u) + (3 * u*u - w*w) * xi_0_w * sin(u);
+   h_imag[1] = (2 * u) * sin(2 * u) + (2 * u * cos(w)) * sin(u) + (3 * u*u - w*w) * xi_0_w * cos(u);
+
+   h_real[2] = cos(2 * u) - cos(w) * cos(u) - 3 * u * xi_0_w * sin(u);
+   h_imag[2] = sin(2 * u) + cos(w) * sin(u) - 3 * u * xi_0_w * cos(u);
+   
+   // h -> f;
+   double denominator = 1. / (9 * u*u - w*w);
+   for (int i = 0; i < 3; i++)
+   {
+      h_real[i] *= denominator;
+      h_imag[i] *= denominator;
+   }
+
+   one_SuN(A);
+   times_equal_complex_SuN(A, h_real[0] + h_imag[0] * I);
+
+   times_equal_complex_SuN(&aux, h_real[1] + h_imag[1] * I);
+   plus_equal_SuN(A, &aux);
+
+   times_equal_complex_SuN(&aux_sqr, h_real[2] + h_imag[2] * I);
+   plus_equal_SuN(A, &aux_sqr);
+}
+#endif // NCOLOR==3
 
 // eponential of the traceless antihermitian part
 inline void taexp_SuN(SuN * restrict A)
