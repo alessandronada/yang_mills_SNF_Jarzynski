@@ -790,7 +790,7 @@ inline void ta_SuN(SuN * restrict A)
   equal_SuN(A, &aux);
   }
 
-// #if NCOLOR==3 // just to be sure
+#if NCOLOR==3 // just to be sure
 // https://arxiv.org/pdf/hep-lat/0311018 SEC III
 inline void taexp_Su3(SuN * restrict A)
 {
@@ -814,7 +814,8 @@ inline void taexp_Su3(SuN * restrict A)
    equal_SuN(&aux_sqr, &aux);
    times_equal_SuN(&aux_sqr, &aux);
 
-   double sqrt_c1_third = sqrt(0.5 * retr_SuN(&aux_sqr)); // retr(.) = 1/3 Tr(.)
+   // retr(.) = 1/3 Tr(.)
+   double sqrt_c1_third = sqrt(0.5 * retr_SuN(&aux_sqr)); // sqrt(c1 / 3)
    double c0_max = 2. * pow(sqrt_c1_third, 3);
    double theta_third = acos(c0 / c0_max) / 3.;
 
@@ -865,7 +866,7 @@ inline void taexp_Su3(SuN * restrict A)
    times_equal_complex_SuN(&aux_sqr, h_real[2] + h_imag[2] * I);
    plus_equal_SuN(A, &aux_sqr);
 }
-// #endif // NCOLOR==3
+#endif // NCOLOR==3
 
 // eponential of the traceless antihermitian part
 inline void taexp_SuN(SuN * restrict A)

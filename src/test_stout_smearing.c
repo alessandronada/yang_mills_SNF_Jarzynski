@@ -16,15 +16,29 @@
 #include"../include/random.h"
 #include"../include/sun.h"
 
+void print_SUN(SuN const * const A) {
+    for (int i = 0; i < NCOLOR; i++) {
+        for (int j = 0; j < NCOLOR; j++) {
+            printf("%lf + %lfi ", creal(A->comp[m(i,j)]), cimag(A->comp[m(i,j)]));
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
 void test_taexp_SU3(SuN const * const test_A) {
     printf("Testing taexp for SU(3)\n");
     SuN SUN_expA, SU3_expA;
 
+    // print_SUN(test_A);
+
     equal_SuN(&SUN_expA, test_A);
     taexp_SuN(&SUN_expA);
+    // print_SUN(&SUN_expA);
 
     equal_SuN(&SU3_expA, test_A);
     taexp(&SU3_expA); // should call taexp_Su3
+    // print_SUN(&SU3_expA);
 
     double elem_max = 0.;
     for (int i = 0; i < NCOLOR * NCOLOR; i++) {
@@ -45,6 +59,7 @@ void isotropic_smear_conf_for_test(Gauge_Conf const * const source,
                               GParam const * const param,
                               Geometry const * const geo,
                               double const rho) {
+    smeared->update_index = source->update_index;
     for (int dir = 0; dir < STDIM; dir++) {
         for (long r = 0; r < (param->d_volume)/2; r++) {
             isotropic_stout_smearing_singlelink(source, param, geo, r, dir, rho, &(smeared->lattice[r][dir]));
@@ -60,6 +75,7 @@ void anisotropic_smear_conf_for_test(Gauge_Conf const * const source,
                                      GParam const * const param,
                                      Geometry const * const geo,
                                      double *rho) {
+    smeared->update_index = source->update_index;
     for (int dir = 0; dir < STDIM; dir++) {
         for (long r = 0; r < (param->d_volume)/2; r++) {
             anisotropic_stout_smearing_singlelink(source, geo, r, dir, rho + dir * STDIM, &(smeared->lattice[r][dir]));
@@ -74,12 +90,12 @@ void real_main(char* in_file) {
     
     GParam param;
     readinput(in_file, &param);
-	initrand(param.d_randseed);
+    initrand(param.d_randseed);
 
     print_parameters_local(&param, 0, 0);
 
     Geometry geo;
-	init_indexing_lexeo();
+    init_indexing_lexeo();
     init_geometry(&geo, &param);
 
     Gauge_Conf GC, smeared_GC;
@@ -110,6 +126,45 @@ void real_main(char* in_file) {
     printf("%f ", creal(smeared_GC.lattice[0][0].comp[0]));
     anisotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho);
     printf("%f \n", creal(smeared_GC.lattice[0][0].comp[0]));
+
+    for (int i = 1; i <= param.d_thermal; i++){
+        update(&GC, &geo, &param);
+
+        if (param.d_saveconf_back_every != 0)
+            if (i % param.d_saveconf_back_every == 0) {
+                write_conf_on_file_back(&GC, &param);
+        }
+    }
+
+    FILE *datafilep, *chipfilep, *topcfilep;
+    init_data_file(&datafilep, &chipfilep, &topcfilep, &param);
+    double rho_value = 0.;
+
+    for (int i = 1; i <= param.d_sample; i++) {
+        update(&GC, &geo, &param);
+
+        if (param.d_measevery != 0)
+            if (i % param.d_measevery == 0) {
+                double plaqs, plaqt;
+                plaquette(&GC, &geo, &param, &plaqs, &plaqt);
+                fprintf(datafilep, "%ld %.3f %e %e \n", GC.update_index, 0., plaqs, plaqt);
+                for (rho_value = 0.; rho_value < 0.5; rho_value += 0.01) {
+                    isotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho_value);
+                    plaquette(&smeared_GC, &geo, &param, &plaqs, &plaqt);
+                    fprintf(datafilep, "%ld %.3f %e %e \n", GC.update_index, rho_value, plaqs, plaqt);
+                }
+                fflush(datafilep);
+        }
+
+        if (param.d_saveconf_back_every != 0)
+            if (i % param.d_saveconf_back_every == 0) {
+                write_conf_on_file(&GC, &param);
+        }
+    }
+
+    fclose(datafilep);
+    if (param.d_chi_prime_meas) fclose(chipfilep);
+    if (param.d_topcharge_tprof_meas) fclose(topcfilep);
 
     free_gauge_conf(&GC, &param);
     free_gauge_conf(&smeared_GC, &param);

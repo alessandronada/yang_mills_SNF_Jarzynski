@@ -1745,7 +1745,8 @@ void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
 {
    GAUGE_GROUP staple, *link;
    link = &(GC->lattice[st_position][dir]);
-   calcstaples_wilson(GC, geo, param, st_position, dir, &staple);
+   calcstaples_wilson(GC, geo, param, st_position, dir, smeared_link); // using smeared_link as buffer 
+   equal_dag(&staple, smeared_link); // note that Caludio's staple are oppositly oriented => dagger them
 
    times_equal_real(&staple, rho); // divide by (2 * D - 2) ?
 
@@ -1753,8 +1754,8 @@ void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
 
    taexp(&staple); // exp(i Q(Omega))
 
-   equal(smeared_link, link);
-   times_equal(smeared_link, &staple); // link = exp(i Q(Omega)) * link
+   equal(smeared_link, &staple);
+   times_equal(smeared_link, link); // link = exp(i Q(Omega)) * link
    unitarize(smeared_link); // just correct numerical error
 }
 
@@ -1762,13 +1763,17 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
                                            Geometry const * const geo,
                                            long st_position,
                                            int dir, // mu in https://arxiv.org/pdf/hep-lat/0311018
-                                           double const rho[STDIM], // rho_nu in https://arxiv.org/pdf/hep-lat/0311018
+                                           double const rho[STDIM], // rho_nu ibidem
                                            GAUGE_GROUP* smeared_link)
 {
    // M[2*(STDIM-1)+1]
    GAUGE_GROUP staple, aux_staple[2*(STDIM-1)+1], *link;
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson_nosum(GC, geo, st_position, dir, aux_staple);
+   for (int i = 0; i < 2*(STDIM-1)+1; i++) { // daggering all the staples
+      equal(&staple, &(aux_staple[i]));
+      equal_dag(&(aux_staple[i]), &staple);
+   }
 
    int nu_staple = 1;
    for (int nu = 0; nu < STDIM; nu++)
@@ -1788,8 +1793,8 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
 
    taexp(&staple); // exp(i Q(Omega))
 
-   equal(smeared_link, link);
-   times_equal(smeared_link, &staple); // link = exp(i Q(Omega)) * link
+   equal(smeared_link, &staple);
+   times_equal(smeared_link, link); // link = exp(i Q(Omega)) * link
    unitarize(smeared_link);
 }
 
