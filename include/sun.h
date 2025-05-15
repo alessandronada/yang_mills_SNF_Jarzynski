@@ -866,6 +866,190 @@ inline void taexp_Su3(SuN * restrict A)
    times_equal_complex_SuN(&aux_sqr, h_real[2] + h_imag[2] * I);
    plus_equal_SuN(A, &aux_sqr);
 }
+
+inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
+{
+#ifdef __INTEL_COMPILER
+   __assume_aligned(&(A->comp), DOUBLE_ALIGN);
+#endif
+
+   SuN aux, aux_sqr;
+   equal_SuN(&aux, A);
+   ta_SuN(&aux); // aux = 0.5 * (A - A^dagger - trace)
+   times_equal_complex_SuN(&aux, -I); // aux is hermitian (eq. (2))
+   SuN Q; equal(&Q, &aux); // Q will not be changed
+
+   double c0 = creal(det_SuN(&aux));
+   int sign_c0;
+   if (c0 >= 0) sign_c0 = 1;
+   else {
+      sign_c0 = -1;
+      c0 = -c0;
+   }
+
+   equal_SuN(&aux_sqr, &aux);
+   times_equal_SuN(&aux_sqr, &aux);
+
+   // retr(.) = 1/3 Tr(.)
+   double sqrt_c1_third = sqrt(0.5 * retr_SuN(&aux_sqr)); // sqrt(c1 / 3)
+   double c0_max = 2. * pow(sqrt_c1_third, 3);
+   double theta_third = acos(c0 / c0_max) / 3.;
+
+   double u = sqrt_c1_third * cos(theta_third);
+   double w = sqrt(3.) * sqrt_c1_third * sin(theta_third);
+   double xi_0_w = fabs(w) > 0.05 ?
+      sin(w) / w :
+      1 - w * w / 6. * (1 - w * w / 20. * (1 - w * w / 42.));
+
+   double h_real[3], h_imag[3];
+   
+   double cos_u = cos(u); // useful terms
+   double cos_w = cos(w);
+   double sin_u = sin(u);
+   double cos_2u = cos(2 * u);
+   double sin_2u = sin(2 * u);
+   double u_sqr = u * u;
+   double w_sqr = w * w;
+
+   h_real[0] = (u_sqr - w_sqr) * cos_2u + (8 * u_sqr * cos_w) * cos_u + 2 * u * xi_0_w * (3 * u_sqr + w_sqr) * sin_u;
+   h_imag[0] = (u_sqr - w_sqr) * sin_2u - (8 * u_sqr * cos_w) * sin_u + 2 * u * xi_0_w * (3 * u_sqr + w_sqr) * cos_u;
+
+   h_real[1] = (2 * u) * cos_2u - (2 * u * cos_w) * cos_u + (3 * u_sqr - w_sqr) * xi_0_w * sin_u;
+   h_imag[1] = (2 * u) * sin_2u + (2 * u * cos_w) * sin_u + (3 * u_sqr - w_sqr) * xi_0_w * cos_u;
+
+   h_real[2] = cos_2u - cos_w * cos_u - 3 * u * xi_0_w * sin_u;
+   h_imag[2] = sin_2u + cos_w * sin_u - 3 * u * xi_0_w * cos_u;
+   
+   // h -> f;
+   double denominator = 1. / (9 * u_sqr - w_sqr);
+   for (int i = 0; i < 3; i++)
+   {
+      h_real[i] *= denominator;
+      h_imag[i] *= denominator;
+   }
+
+   // for the derivative
+   double denominator2 = 1. / (2. * denominator * denominator);
+   double xi_1_w = fabs(w) > 0.05 ?
+      cos_w / w_sqr - sin(w) / (w * w_sqr) :
+      -1./3. + w_sqr*(1./30. + w_sqr*(-1./840 + 1./45360.*w_sqr));
+
+   double _r_real[2][3], _r_imag[2][3];
+   double **r_real = _r_real - 1; // never do r_real[0] !!!
+   double **r_imag = _r_imag - 1;
+
+   double tmp_real, tmp_imag;
+
+   tmp_real = (8. * u * cos_w + u * (3. * u_sqr + w_sqr) * xi_0_w);
+   tmp_imag = (-4. * u_sqr * cos_w + (9. * u_sqr + w_sqr) * xi_0_w);
+   r_real[1][0] = 2. * (u * cos_2u - (u_sqr - w_sqr) * sin_2u)
+                + 2. * cos_u * tmp_real + 2. * sin_u * tmp_imag;
+   r_imag[1][0] = 2. * (u * sin_2u + (u_sqr - w_sqr) * cos_2u)
+                - 2. * sin_u * tmp_real + 2. * cos_u * tmp_imag;
+   
+   tmp_real = -2. * cos_w - (w_sqr - 3. * u_sqr) * xi_0_w;
+   tmp_imag = 2 * u * cos_w + 6. * u; 
+   r_real[1][1] = 2. * cos_2u - 2. * u * sin_2u 
+                + cos_u * tmp_real + sin_u * tmp_imag;
+   r_imag[1][1] = 2. * sin_2u + 2 * u * cos_2u
+                - sin_u * tmp_real + cos_u * tmp_imag;
+
+   tmp_real = cos_w - 3. * xi_0_w;
+   tmp_imag = 3. * u * xi_0_w;
+   r_real[1][2] = -2. * sin_2u + sin_u * tmp_real - cos_u * tmp_imag;
+   r_imag[1][2] = 2 * cos_2u + cos_u * tmp_real + sin_u * tmp_imag;
+
+   tmp_real = cos_w * xi_0_w + 3. * u_sqr * xi_1_w;
+   tmp_imag = 4 * u * xi_0_w;
+   r_real[2][0] = -2 * cos_2u + 2. * u * sin_u * tmp_real - 2. * u * cos_u * tmp_imag;
+   r_imag[2][0] = -2. * sin_2u + 2. * u * sin_u * tmp_imag + 2. * u * cos_u * tmp_real;
+
+   tmp_real = cos_w  + xi_0_w - 3. * u_sqr * xi_1_w;
+   tmp_imag = 2. * u * xi_0_w;
+   r_real[2][1] = -sin_u * tmp_real + cos_u * tmp_imag;
+   r_imag[2][1] = -sin_u * tmp_imag - cos_u * tmp_real;
+
+   tmp_real = xi_0_w;
+   tmp_imag = -3. * u * xi_1_w;
+   r_real[2][2] = cos_u * tmp_real + sin_u * tmp_imag;
+   r_imag[2][2] = cos_u * tmp_imag - sin_u * tmp_real;
+
+   double c1[3] = {-2. * (15. * u_sqr + w_sqr),
+                   2. * u,
+                   3. * u_sqr - w_sqr};
+   double c2[3] = {-24. * u,
+                   1.,
+                   -3. * u};
+   
+   double b1_real[3], b1_imag[3];
+   double b2_real[3], b2_imag[3];
+   for (int j = 0; j < 3; j++){
+      b1_real[j] = (c1[0] * h_real[j] + c1[1] * r_real[1][j] + c1[2] * r_real[2][j]) * denominator2;
+      b1_imag[j] = (c1[0] * h_imag[j] + c1[1] * r_imag[1][j] + c1[2] * r_imag[2][j]) * denominator2;
+
+      b2_real[j] = (c2[0] * h_real[j] + c2[1] * r_real[1][j] + c2[2] * r_real[2][j]) * denominator2;
+      b2_imag[j] = (c2[0] * h_imag[j] + c2[1] * r_imag[1][j] + c2[2] * r_real[2][j]) * denominator2;
+   }
+
+   // f_j(-c0) = (-1)^j f_j*(c0), eq(34)
+   h_imag[0] *= sign_c0;
+   h_real[1] *= sign_c0;
+   h_imag[2] *= sign_c0;
+
+   // b_ij(-c0) = (-1)^{i + j + 1} * b_ij*(c0)
+   b1_imag[0] *= sign_c0;
+   b1_real[1] *= sign_c0;
+   b1_imag[2] *= sign_c0;
+   b2_real[0] *= sign_c0;
+   b2_imag[1] *= sign_c0;
+   b2_real[2] *= sign_c0;
+
+   one_SuN(A);
+   times_equal_complex_SuN(A, h_real[0] + h_imag[0] * I);
+
+   times_equal_complex_SuN(&aux, h_real[1] + h_imag[1] * I);
+   plus_equal_SuN(A, &aux);
+
+   times_equal_complex_SuN(&aux_sqr, h_real[2] + h_imag[2] * I);
+   plus_equal_SuN(A, &aux_sqr);
+   
+   SuN B1, B2;
+   
+   equal(&aux, &Q); // aux = Q
+   equal(&aux_sqr, &aux); times_equal(&aux_sqr, &aux); // aux_sqr = Q^2
+
+   one(&B1); times_equal_complex(&B1, b1_real[0] + I*b1_imag[0]); // B1 = b10
+   times_equal_complex(&aux, b1_real[1] + I*b1_imag[1]); plus_equal(&B1, &aux); // B1 = b10 + b11 Q
+   times_equal_complex(&aux_sqr, b1_real[2] + I*b1_imag[2]); plus_equal(&B1, &aux_sqr);
+   // now B1 = b10 + b11 Q + b12 Q^2
+
+   //Fun! let's do it again
+   equal(&aux, &Q); // aux = Q
+   equal(&aux_sqr, &aux); times_equal(&aux_sqr, &aux); // aux_sqr = Q^2
+
+   one(&B2); times_equal_complex(&B2, b2_real[0] + I*b2_imag[0]);
+   times_equal_complex(&aux, b2_real[1] + I*b2_imag[1]); plus_equal(&B2, &aux);
+   times_equal_complex(&aux, b2_real[2] + I*b2_imag[2]); plus_equal(&B2, &aux_sqr);
+
+   oplus_SuN(deriv, &Q, &B1);
+   
+   TensProd aux_TP; oplus_SuN(&aux_TP, &Q, &B2);
+   plus_equal_TensProd(deriv, &aux_TP);
+   
+   // from now on aux is the identity
+   one(&aux); otimes_SuN(&aux_TP, &aux, &aux); // is this one_TensProd ?
+   times_equal_complex_TensProd(&aux_TP, h_real[1] + I*h_imag[1]);
+   plus_equal(deriv, &aux_TP);
+   
+   otimes_SuN(&aux_TP, &Q, &aux);
+   times_equal_complex_TensProd(&aux_TP, h_real[2] + I*h_imag[2]);
+   plus_equal(deriv, &aux_TP);
+
+   otimes_SuN(&aux_TP, &aux, &Q); // can I merge this with previous?
+   times_equal_complex_TensProd(&aux_TP, h_real[2] + I*h_imag[2]);
+   plus_equal(deriv, &aux_TP);
+   // now deriv = Q oplus B1 + Q oplus B2 + f1 * Id otimes Id + f2 * (Q otimes Id + Id otimes Q)
+}
 #endif // NCOLOR==3
 
 // eponential of the traceless antihermitian part
@@ -1071,6 +1255,78 @@ inline void TensProd_init_SuN(TensProd * restrict TP, SuN const * const restrict
      }
   }
 
+// Definitions from https://arxiv.org/pdf/2103.11965v3
+
+// TP^i_j^k_l = A^k_j B^i_l
+inline void oplus_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN const *const restrict B) {
+  #ifdef __INTEL_COMPILER
+  __assume_aligned(&(B->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(A->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
+  #endif
+
+  int i, j, k, l;
+
+  for(i=0; i<NCOLOR; i++)
+     {
+     for(j=0; j<NCOLOR; j++)
+        {
+        for(k=0; k<NCOLOR; k++)
+           {
+           for(l=0; l<NCOLOR; l++)
+              {
+              TP->comp[i][j][k][l]=A->comp[m(k,j)]*B->comp[m(i,l)];
+              }
+           }
+        }
+     }
+}
+
+// TP^i_j^k_l = A^i_j B^k_l
+inline void otimes_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN const *const restrict B) {
+  #ifdef __INTEL_COMPILER
+  __assume_aligned(&(B->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(A->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
+  #endif
+
+  int i, j, k, l;
+
+  for(i=0; i<NCOLOR; i++)
+     {
+     for(j=0; j<NCOLOR; j++)
+        {
+        for(k=0; k<NCOLOR; k++)
+           {
+           for(l=0; l<NCOLOR; l++)
+              {
+              TP->comp[i][j][k][l]=A->comp[m(i,j)]*B->comp[m(k,l)];
+              }
+           }
+        }
+     }
+}
+
+// B = A star T or B^i_j = A^l_n T^l_j^i_n
+inline void star_TensProd(SuN * restrict B, SuN const * const restrict A, TensProd const * const restrict TP)
+{
+#ifdef __INTEL_COMPILER
+  __assume_aligned(&(B->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(A->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
+#endif
+ 
+   zero(B);
+   for (int i = 0; i < NCOLOR; i++) {
+      for (int j = 0; j < NCOLOR; j++) {
+         for (int l = 0; l < NCOLOR; l++) {
+            for (int n = 0; n < NCOLOR; n++) {
+               B->comp[m(i, j)] += A->comp[m(l, n)] * TP->comp[l][j][i][n];
+            }
+         }
+      }
+   }
+}
 
 // convert the fundamental representation matrix B to the adjoint representation matrix A
 inline void fund_to_adj_SuN(SuNAdj * restrict A, SuN const * const restrict B)

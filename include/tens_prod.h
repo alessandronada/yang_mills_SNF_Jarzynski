@@ -223,6 +223,55 @@ inline void times_equal_TensProd(TensProd * restrict A, TensProd const * const r
   times_TensProd(A, &tmp, B);
   }
 
+// TensProd A = (TensProd B) * (SuN M)
+inline void times_rightSuN_TensProd(TensProd * restrict A,
+                                    TensProd const * const restrict B,
+                                    SuN const * const restrict M)
+{
+#ifdef DEBUG
+   if (A == B) {
+    fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+   }
+#endif
+
+   for (int i = 0; i < NCOLOR; i++) {
+      for (int j = 0; j < NCOLOR; j++) {
+         for (int k = 0; k < NCOLOR; k++) {
+            for (int l = 0; l < NCOLOR; l++) {
+               for (int n = 0; n < NCOLOR; n++) {
+                  A->comp[i][j][k][l] = B->comp[i][j][k][n] * M->comp[m(n, l)];
+               }
+            }
+         }
+      }
+   }
+}
+
+// TensProd A = (SuN M) * (TensProd B)
+inline void times_leftSuN_TensProd(TensProd * restrict A,
+                                    TensProd const * const restrict B,
+                                    SuN const * const restrict M)
+{
+#ifdef DEBUG
+   if (A == B) {
+    fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+   }
+#endif
+
+   for (int i = 0; i < NCOLOR; i++) {
+      for (int j = 0; j < NCOLOR; j++) {
+         for (int k = 0; k < NCOLOR; k++) {
+            for (int l = 0; l < NCOLOR; l++) {
+               for (int n = 0; n < NCOLOR; n++) {
+                  A->comp[i][j][k][l] = M->comp[m(i, n)] * B->comp[n][j][k][l];
+               }
+            }
+         }
+      }
+   }
+}
 
 inline double retr_TensProd(TensProd const * const restrict A)
   {
