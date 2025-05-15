@@ -314,6 +314,20 @@ inline double imtr_TensProd(TensProd const * const restrict A)
   return ris;
   }
 
+void LU_TensProd(TensProd const * const restrict TP, TensProd * restrict result, int * restrict sign);
+inline complex double det_TensProd(TensProd const * const TP) {
+#ifdef __INTEL_COMPILER
+  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
+#endif
+   int sign = 0;
+   TensProd lu; LU_TensProd(TP, &lu, &sign);
+
+   complex double result = sign > 0 ? 1. + I*0. : -1. + I*0.;
+   for (int i = 0; i < NCOLOR; i++) for (int j = 0; j < NCOLOR; j++) {
+      result *= lu.comp[i][i][j][j]; // [in1][out1][out2][in2], diagonal is (in1, in2) == (out1, out2)
+   }
+   return result;
+}
 
 void print_on_screen_TensProd(TensProd const * const A);
 void print_on_file_TensProd(FILE *fp, TensProd const * const A);

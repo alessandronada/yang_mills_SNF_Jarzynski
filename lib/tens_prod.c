@@ -46,6 +46,62 @@ void times_equal_TensProd(TensProd *A, TensProd const * const B);
 double retr_TensProd(TensProd const * const A);
 double imtr_TensProd(TensProd const * const A);
 
+#define mTensorProd(i, j) i % NCOLOR][j % NCOLOR][j / NCOLOR][i / NCOLOR
+void LU_TensProd(TensProd const * const restrict TP, TensProd * restrict result, int * restrict sign)
+{
+   equal_TensProd(result, TP);
+   *sign = 1;
+   const int dim_TP = NCOLOR * NCOLOR;
+   double vector[dim_TP]; 
+
+   for (int i = 0; i < dim_TP; i++) {
+      double big = 0.;
+      for (int j = 0; j < dim_TP; j++) {
+         double temp = cabs(TP->comp[mTensorProd(i, j)]);
+         if (temp > big) big = temp;
+      }
+      vector[i] = 1. / big;
+   }
+   for (int j = 0; j < dim_TP; j++) {
+      for (int i = 0; i < j; i++) {
+         complex double sum = result->comp[mTensorProd(i, j)];
+         for (int k = 0; k < i; k++) {
+            sum -= result->comp[mTensorProd(i, k)] * result->comp[mTensorProd(k, j)];
+         }
+         result->comp[mTensorProd(i, j)] = sum;
+      }
+      double big = 0;
+      int imax = 0;
+      for (int i = j; i < dim_TP; i++) {
+         complex double sum = result->comp[mTensorProd(i, j)];
+         for (int k = 0; k < j; k++) {
+            sum -= result->comp[mTensorProd(i, k)] * result->comp[mTensorProd(k, j)];
+         }
+         result->comp[mTensorProd(i, j)] = sum;
+
+         double temp = vector[i] * cabs(sum);
+         if (temp > big){
+             big = temp;
+             imax = i;
+         }
+      }
+      if (j != imax) {
+         for (int k = 0; k < dim_TP; k++) {
+            complex double temp = result->comp[mTensorProd(imax, k)];
+            result->comp[mTensorProd(imax, k)] = result->comp[mTensorProd(j, k)];
+            result->comp[mTensorProd(j, k)] = temp;
+         }
+         *sign *= -1;
+         vector[imax] = vector[j];
+      }
+      if (j != dim_TP - 1) {
+         complex double temp = (1. + I*0.) / (result->comp[mTensorProd(j, j)]);
+         for (int i = j + 1; i < dim_TP; i++) {
+            result->comp[mTensorProd(i, j)] *= temp;
+         }
+      }
+   }
+}
 
 void print_on_screen_TensProd(TensProd const * const A)
   {
