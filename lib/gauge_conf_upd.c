@@ -1759,6 +1759,78 @@ void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
    unitarize(smeared_link); // just correct numerical error
 }
 
+complex double stout_smearing_chainrules(TensProd const * const expderiv, SuN const * const expQ, SuN const * const C, SuN const * const link)
+{
+   // useful tensors (maybe)
+   TensProd otimes_idid; one_TensProd(&otimes_idid);
+   TensProd oplus_idid; zero_TensProd(&oplus_idid);
+   for (int i = 0; i < NCOLOR; i++) {
+      for (int j = 0; j < NCOLOR; j++) {
+         oplus_idid.comp[i][j][j][i] = 1. + I*0;
+      }
+   }
+
+   // d Q / d Omega
+   TensProd dQdOmega, aux_TP;
+   equal_TensProd(&dQdOmega, &otimes_idid);
+   times_equal_complex_TensProd(&dQdOmega, -0.5*I);
+   equal_TensProd(&aux_TP, &oplus_idid);
+   times_equal_complex_TensProd(&aux_TP, +0.5*I / (double) NCOLOR);
+   plus_equal_TensProd(&dQdOmega, &aux_TP);
+   // dQdOmega = 0.5 I / NCOLOR * (Id oplus Id) - 0.5 I (Id otimes Id)
+
+   // d Omega / d U
+   SuN identity; one(&identity);
+   SuN aux_mtr; equal_dag(&aux_mtr, C); times_equal_real(&aux_mtr, -1);
+   TensProd dOmegadU; otimes_SuN(&dOmegadU, &identity, &aux_mtr);
+   // dOmegadU = Id otimes (-C^dagger)
+
+   TensProd dQ_dU; star_TensProd(&dQ_dU, &dQdOmega, &dOmegadU);
+   TensProd dexpQdU; star_TensProd(&dexpQdU, &expderiv, &dQ_dU);
+
+   TensProd jacobian; times_rightSuN_TensProd(&jacobian, &dexpQdU, link);
+   times_leftSuN_TensProd(&aux_TP, expQ, &otimes_idid);
+   plus_equal_TensProd(&jacobian, &aux_TP);
+   // jacobian = (dexpQdU dot link) + (expQ dot (Id otimes Id))
+
+   return det_TensProd(&jacobian);
+}
+
+void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
+                                         GParam const * const param,
+                                         Geometry const * const geo,
+                                         long st_position,
+                                         int dir,
+                                         double rho,
+                                         GAUGE_GROUP* smeared_link,
+                                         double* abs_detJ)
+{
+#if NCOLOR != 3
+   fprintf(stderr, "Jacobiano implementato solo per SU(3), %s %d", __FILE__, __LINE__);
+   exit(EXIT_FAILURE);
+#endif
+   GAUGE_GROUP link_buff, staple;
+   const GAUGE_GROUP* link;
+   TensProd exp_deriv;
+   link = &(GC->lattice[st_position][dir]);
+   calcstaples_wilson(GC, geo, param, st_position, dir, &link_buff); // using smeared_link as buffer 
+   equal_dag(&staple, &link_buff); // note that Caludio's staple are oppositly oriented => dagger them
+
+   times_equal_real(&staple, rho);
+
+   GAUGE_GROUP expQ; times_dag2(&expQ, &staple, link); // this is Omega
+   taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ+)
+
+   equal(&link_buff, &staple);
+   times_equal(&link_buff, link); // link = exp(i Q(Omega)) * link
+   unitarize(&link_buff); // just correct numerical error
+
+   complex double detJ = stout_smearing_chainrules(&exp_deriv, &expQ, &staple, link);
+
+   *abs_detJ = cabs(detJ);
+   equal(smeared_link, &link_buff); // no problems if smeared link in GC
+}
+
 void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
                                            Geometry const * const geo,
                                            long st_position,
@@ -1796,6 +1868,52 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
    equal(smeared_link, &staple);
    times_equal(smeared_link, link); // link = exp(i Q(Omega)) * link
    unitarize(smeared_link);
+}
+
+void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
+                                           Geometry const * const geo,
+                                           long st_position,
+                                           int dir, // mu in https://arxiv.org/pdf/hep-lat/0311018
+                                           double const rho[STDIM], // rho_nu ibidem
+                                           GAUGE_GROUP* smeared_link,
+                                           double* abs_detJ)
+{
+   GAUGE_GROUP staple, aux_staple[2*(STDIM-1)+1];
+   const GAUGE_GROUP* link;
+   link = &(GC->lattice[st_position][dir]);
+   calcstaples_wilson_nosum(GC, geo, st_position, dir, aux_staple);
+   for (int i = 0; i < 2*(STDIM-1)+1; i++) { // daggering all the staples
+      equal(&staple, &(aux_staple[i]));
+      equal_dag(&(aux_staple[i]), &staple);
+   }
+
+   int nu_staple = 1;
+   for (int nu = 0; nu < STDIM; nu++)
+   {
+      if (nu == dir) continue;
+
+      times_equal_real(&aux_staple[nu_staple], rho[nu]);
+      plus_equal(&staple, &aux_staple[nu_staple]); 
+      nu_staple++;
+
+      times_equal_real(&aux_staple[nu_staple], rho[nu]);
+      plus_equal(&staple, &aux_staple[nu_staple]); 
+      nu_staple++;
+   }
+   
+   GAUGE_GROUP expQ; times_dag2(&expQ, &staple, link); // this is Omega
+   TensProd exp_deriv;
+   taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ+)
+
+   GAUGE_GROUP link_buffer;
+   equal(&link_buffer, &staple);
+   times_equal(&link_buffer, link); // link = exp(i Q(Omega)) * link
+   unitarize(&link_buffer);
+
+   complex double detJ = stout_smearing_chainrules(&exp_deriv, &expQ, &staple, link);
+
+   *abs_detJ = cabs(detJ);
+   equal(smeared_link, &link_buffer); // no problems if smeared link in GC
 }
 
 // n step of ape smearing with parameter alpha

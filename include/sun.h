@@ -1037,7 +1037,8 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    plus_equal_TensProd(deriv, &aux_TP);
    
    // from now on aux is the identity
-   one(&aux); otimes_SuN(&aux_TP, &aux, &aux); // is this one_TensProd ?
+   one(&aux); 
+   one_TensProd(&aux_TP);
    times_equal_complex_TensProd(&aux_TP, h_real[1] + I*h_imag[1]);
    plus_equal(deriv, &aux_TP);
    
@@ -1307,8 +1308,8 @@ inline void otimes_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN
      }
 }
 
-// B = A star T or B^i_j = A^l_n T^l_j^i_n
-inline void star_TensProd(SuN * restrict B, SuN const * const restrict A, TensProd const * const restrict TP)
+// SuN B = (SuN A) star (TensProd T) or B^i_j = A^l_n T^l_j^i_n
+inline void star_SuN_TensProd(SuN * restrict B, SuN const * const restrict A, TensProd const * const restrict TP)
 {
 #ifdef __INTEL_COMPILER
   __assume_aligned(&(B->comp), DOUBLE_ALIGN);
@@ -1322,6 +1323,56 @@ inline void star_TensProd(SuN * restrict B, SuN const * const restrict A, TensPr
          for (int l = 0; l < NCOLOR; l++) {
             for (int n = 0; n < NCOLOR; n++) {
                B->comp[m(i, j)] += A->comp[m(l, n)] * TP->comp[l][j][i][n];
+            }
+         }
+      }
+   }
+}
+
+// TensProd A = (TensProd B) * (SuN M)
+inline void times_rightSuN_TensProd(TensProd * restrict A,
+                                    TensProd const * const restrict B,
+                                    SuN const * const restrict M)
+{
+#ifdef DEBUG
+   if (A == B) {
+    fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+   }
+#endif
+
+   for (int i = 0; i < NCOLOR; i++) {
+      for (int j = 0; j < NCOLOR; j++) {
+         for (int k = 0; k < NCOLOR; k++) {
+            for (int l = 0; l < NCOLOR; l++) {
+               for (int n = 0; n < NCOLOR; n++) {
+                  A->comp[i][j][k][l] = B->comp[i][j][k][n] * M->comp[m(n, l)];
+               }
+            }
+         }
+      }
+   }
+}
+
+// TensProd A = (SuN M) * (TensProd B)
+inline void times_leftSuN_TensProd(TensProd * restrict A,
+                                    SuN const * const restrict M,
+                                    TensProd const * const restrict B)
+{
+#ifdef DEBUG
+   if (A == B) {
+    fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+   }
+#endif
+
+   for (int i = 0; i < NCOLOR; i++) {
+      for (int j = 0; j < NCOLOR; j++) {
+         for (int k = 0; k < NCOLOR; k++) {
+            for (int l = 0; l < NCOLOR; l++) {
+               for (int n = 0; n < NCOLOR; n++) {
+                  A->comp[i][j][k][l] = M->comp[m(i, n)] * B->comp[n][j][k][l];
+               }
             }
          }
       }

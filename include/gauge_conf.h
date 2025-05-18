@@ -448,6 +448,21 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
                       int dir, 
                       double const rho[STDIM],
                       GAUGE_GROUP* smeared_link);
+void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
+                                         GParam const * const param,
+                                         Geometry const * const geo,
+                                         long st_position,
+                                         int dir,
+                                         double rho,
+                                         GAUGE_GROUP* smeared_link,
+                                         double* abs_detJ);
+void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
+                                           Geometry const * const geo,
+                                           long st_position,
+                                           int dir, // mu in https://arxiv.org/pdf/hep-lat/0311018
+                                           double const rho[STDIM], // rho_nu ibidem
+                                           GAUGE_GROUP* smeared_link,
+                                           double* abs_detJ);
 									
 // in gauge_conf_paral_temp.c
 void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,

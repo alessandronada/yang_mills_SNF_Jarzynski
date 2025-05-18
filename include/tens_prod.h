@@ -223,49 +223,30 @@ inline void times_equal_TensProd(TensProd * restrict A, TensProd const * const r
   times_TensProd(A, &tmp, B);
   }
 
-// TensProd A = (TensProd B) * (SuN M)
-inline void times_rightSuN_TensProd(TensProd * restrict A,
-                                    TensProd const * const restrict B,
-                                    SuN const * const restrict M)
+// in https://arxiv.org/pdf/2103.11965v3 A = B star C
+// A^i_j^k_l = B^i_n^m_l C^n_j^k_m
+inline void star_TensProd(TensProd * restrict A,
+                          TensProd const * const restrict B,
+                          TensProd const * const restrict C)
 {
 #ifdef DEBUG
-   if (A == B) {
-    fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-    exit(EXIT_FAILURE);
-   }
-#endif
-
-   for (int i = 0; i < NCOLOR; i++) {
-      for (int j = 0; j < NCOLOR; j++) {
-         for (int k = 0; k < NCOLOR; k++) {
-            for (int l = 0; l < NCOLOR; l++) {
-               for (int n = 0; n < NCOLOR; n++) {
-                  A->comp[i][j][k][l] = B->comp[i][j][k][n] * M->comp[m(n, l)];
-               }
-            }
-         }
+   if(A==B || A==C || B==C)
+      {
+      fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
       }
-   }
-}
-
-// TensProd A = (SuN M) * (TensProd B)
-inline void times_leftSuN_TensProd(TensProd * restrict A,
-                                    TensProd const * const restrict B,
-                                    SuN const * const restrict M)
-{
-#ifdef DEBUG
-   if (A == B) {
-    fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-    exit(EXIT_FAILURE);
-   }
 #endif
-
+   zero_TensProd(A);
+   
+   // this is not pretty
    for (int i = 0; i < NCOLOR; i++) {
       for (int j = 0; j < NCOLOR; j++) {
          for (int k = 0; k < NCOLOR; k++) {
             for (int l = 0; l < NCOLOR; l++) {
-               for (int n = 0; n < NCOLOR; n++) {
-                  A->comp[i][j][k][l] = M->comp[m(i, n)] * B->comp[n][j][k][l];
+               for (int m = 0; m < NCOLOR; m++) {
+                  for (int n = 0; n < NCOLOR; n++) {
+                     A->comp[i][j][k][l] += B->comp[i][n][m][l] * C->comp[n][j][k][m];
+                  }
                }
             }
          }
