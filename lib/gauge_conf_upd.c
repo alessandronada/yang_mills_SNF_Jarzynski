@@ -1818,10 +1818,10 @@ void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
 
    times_equal_real(&staple, rho);
 
-   GAUGE_GROUP expQ; times_dag2(&expQ, &staple, link); // this is Omega
-   taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ+)
+   GAUGE_GROUP expQ; times_dag2(&expQ, &staple, link); // this is Omega = C U^dagger
+   taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ) = exp(ta(Omega))
 
-   equal(&link_buff, &staple);
+   equal(&link_buff, &expQ); 
    times_equal(&link_buff, link); // link = exp(i Q(Omega)) * link
    unitarize(&link_buff); // just correct numerical error
 
@@ -1906,7 +1906,7 @@ void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ+)
 
    GAUGE_GROUP link_buffer;
-   equal(&link_buffer, &staple);
+   equal(&link_buffer, &expQ);
    times_equal(&link_buffer, link); // link = exp(i Q(Omega)) * link
    unitarize(&link_buffer);
 
