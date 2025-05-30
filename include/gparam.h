@@ -30,6 +30,9 @@ typedef struct GParam {
   int d_J_steps;	// steps in each evolution
   int d_J_dmeas;	// steps between each measurement during evolution
   double d_J_beta_target;     // target beta, only for evolutions in beta
+  int d_J_protocol_type;    // 0 for linear protocol, otherwise load from file
+  double* d_J_protocol;     // array for protocol parameters
+  double* d_SNF_rho;        // array for smearing parameters
 	
 	// hierarchical update (parallel tempering)
 	int d_N_hierarc_levels; // number of hierarchical levels
@@ -76,6 +79,8 @@ typedef struct GParam {
   char d_conf_file[STD_STRING_LENGTH];
   char d_data_file[STD_STRING_LENGTH];
   char d_work_file[STD_STRING_LENGTH];
+  char d_protocol_file[STD_STRING_LENGTH];
+  char d_smearingrho_file[STD_STRING_LENGTH];
 	char d_chiprime_file[STD_STRING_LENGTH]; // print chi prime measures
 	char d_topcharge_tprof_file[STD_STRING_LENGTH]; // print topological charge time correlator measures
   char d_log_file[STD_STRING_LENGTH];
@@ -106,6 +111,8 @@ typedef struct GParam {
 void remove_white_line_and_comments(FILE *input);
 void readinput(char *in_file, GParam *param);
 void init_derived_constants(GParam *param);
+void init_protocol(GParam const * const param);
+void init_smearing_parameter(GParam const * const param);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tprof_f, GParam const * const param);
 void init_work_file(FILE **workfilep, GParam const * const param);
 void free_hierarc_params(GParam *param);

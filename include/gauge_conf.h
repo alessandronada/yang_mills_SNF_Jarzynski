@@ -415,6 +415,11 @@ void update_with_trace_def(Gauge_Conf *GC,
                            Geometry const * const geo,
                            GParam const * const param,
                            double *acc);
+void isotropic_stout_smearing_update(Gauge_Conf * GC,
+	Geometry const * const geo,
+	GParam const * const param,
+	double * logJ,
+	double rho);
 void cooling(Gauge_Conf *GC,
              Geometry const * const geo,
              GParam const * const param,

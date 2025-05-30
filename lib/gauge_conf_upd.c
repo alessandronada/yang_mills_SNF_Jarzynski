@@ -1735,9 +1735,71 @@ void calcstaples_wilson_nosum(Gauge_Conf const * const GC,
    }
 }
 
+// perform a stout smearing step
+void isotropic_stout_smearing_update(Gauge_Conf * GC,
+	Geometry const * const geo,
+	GParam const * const param,
+	double * logJ,
+	double rho)
+{
+	for (int i = 0; i < STDIM; i++)
+	{
+		if (param->d_size[i] == 1)
+		{
+			fprintf(stderr, "Error: this functon can not be used in the completely reduced case (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	long r;
+	int j, dir;
+	double dlogJ = 0.0;
+
+	// heatbath
+	for (dir = 0; dir < STDIM; dir++)
+	{
+        #ifdef OPENMP_MODE
+        #pragma omp parallel for num_threads(NTHREADS) private(r)
+        #endif 
+		for (r = 0; r < (param->d_volume) / 2; r++)
+		{
+			GAUGE_GROUP smeared_link;
+			double abs_detJ;
+			isotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho, &smeared_link, &abs_detJ);
+			equal(&(GC->lattice[r][dir]), &smeared_link);
+			dlogJ += log(detJ)
+		}
+
+        #ifdef OPENMP_MODE
+        #pragma omp parallel for num_threads(NTHREADS) private(r)
+        #endif 
+		for (r = (param->d_volume) / 2; r < (param->d_volume); r++)
+		{
+			GAUGE_GROUP smeared_link;
+			double abs_detJ;
+			isotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho, &smeared_link, &abs_detJ);
+			equal(&(GC->lattice[r][dir]), &smeared_link);
+			dlogJ += log(detJ)
+		}
+	}
+
+	// final unitarization
+    #ifdef OPENMP_MODE
+    #pragma omp parallel for num_threads(NTHREADS) private(r, dir)
+    #endif 
+	for (r = 0; r < (param->d_volume); r++)
+	{
+		for (dir = 0; dir < STDIM; dir++)
+		{
+			unitarize(&(GC->lattice[r][dir]));
+		}
+	}
+	*logJ = dlogJ;
+}
+
 void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
+	                                     Geometry const * const geo,
                                          GParam const * const param,
-                                         Geometry const * const geo,
                                          long st_position,
                                          int dir,
                                          double rho,
@@ -1797,8 +1859,8 @@ complex double stout_smearing_chainrules(TensProd const * const expderiv, SuN co
 }
 
 void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
+	                                     Geometry const * const geo,
                                          GParam const * const param,
-                                         Geometry const * const geo,
                                          long st_position,
                                          int dir,
                                          double rho,

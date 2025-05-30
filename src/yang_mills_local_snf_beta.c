@@ -18,17 +18,12 @@
 #include"../include/gparam.h"
 #include"../include/random.h"
 
-double beta_protocol(double t, double b0, double bt)
-{
-    return b0 + t * (bt - b0);
-}
-
 void real_main(char *in_file)
 {
     Gauge_Conf GC, GCstart;
     Geometry geo;
     GParam param;
-    double W = 0.0, beta0 = 0.0, dbeta = 0.0, act = 0.0, beta_old = 0.0, plaqs, plaqt;
+    double W = 0.0, beta0 = 0.0, act0 = 0.0, act1 = 0.0, plaqs, plaqt, logJ;
 
     char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
     int count, rel, step;
@@ -47,6 +42,11 @@ void real_main(char *in_file)
     // initialize random generator
     initrand(param.d_randseed);
 
+    // initialize protocol parameters
+    init_protocol(&param);
+    // initialize smearing parameters
+    init_smearing_parameter(&param);
+
     // open data_file
     init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
     init_work_file(&workfilep, &param);
@@ -57,12 +57,12 @@ void real_main(char *in_file)
 
     // initialize gauge configuration
     init_gauge_conf(&GC, &param);
+    // copy to save initial configuration on prior
     init_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
 
     // Monte Carlo begin
     time(&time1);
     beta0 = param.d_beta;
-    dbeta = (param.d_J_beta_target - param.d_beta) / param.d_J_steps;
 
     // thermalization
     for (count = 0; count < param.d_thermal; count++)
@@ -70,55 +70,82 @@ void real_main(char *in_file)
         update(&GC, &geo, &param);
     }
 
-    // loop on training steps
-    for (epoch = 0; epoch < param.d_J_nepochs; epoch++)
+    // loop on evolutions
+    for (count=0; count < param.d_J_evolutions; count++)
     {
-        // loop on evolutions
-        for (count = 0; count < param.d_J_evolutions; count++)
+      W = 0.0;
+      param.d_beta = beta0;
+
+	    // updates between the start of each evolution
+	    for (rel = 0; rel < param.d_J_between; rel++)
+        update(&GC, &geo, &param);
+
+      // increase the index of evolutions
+      GC.evolution_index++;
+
+	    // store the starting configuration of the evolution
+	    copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
+
+	    // non-equilibrium evolution
+	    for (step = 0; step < param.d_J_steps; step++)
+	    {
+			  //compute S_beta(i) (U_i)
+			  plaquette(&GC, &geo, &param, &plaqs, &plaqt);
+			  act0 = 1 - 0.5 * (plaqs + plaqt);
+			  act0 *= 6 / param.d_inv_vol;
+
+			  //stout smearing step: U_i -> g_i(U_i)
+			  isotropic_stout_smearing_update(&GC, &geo, &param, &logJ, param->d_SNF_rho[step]);
+
+        //change beta: S_beta(i) -> S_beta(i+1)
+        param.d_beta = param.d_J_protocol[step];
+
+			  //compute S_beta(i+1) (g_i(U_i))
+        plaquette(&GC, &geo, &param, &plaqs, &plaqt);
+        act1 = 1 - 0.5 * (plaqs + plaqt);
+        act1 *= 6 / param.d_inv_vol;
+
+			  //compute work step
+	      W += act1 - act0 - logJ;
+	    
+	      //MC update: g_i(U_i) -> U_(i+1)
+        update(&GC, &geo, &param);
+
+        if ((step + 1) % param.d_J_dmeas == 0 && step != (param.d_J_steps - 1))
         {
-            W = 0.0;
-            param.d_beta = beta0;
-
-            // updates between the start of each evolution
-            for (rel = 0; rel < param.d_J_between; rel++)
-                update(&GC, &geo, &param);
-
-            // increase the index of evolutions
-            GC.evolution_index++;
-
-            // store the starting configuration of the evolution
-            copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
-
-            // non-equilibrium evolution
-            for (step = 0; step < param.d_J_steps; step++)
-            {
-                //change beta and compute work
-                beta_old = param.d_beta
-                param.d_beta = protocol((((double) step+1) / ((double) param.d_J_steps), beta0, param.d_J_beta_target);
-                dbeta = param.d_beta - beta_old;
-                plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-                act = 1 - 0.5 * (plaqs + plaqt);
-                act *= 6 / param.d_inv_vol;
-                W += dbeta * act;
-
-                // save plaqs + plaqt in array
-
-                // perform a single step of updates with new beta
-                update(&GC, &geo, &param);
-            }
-
-            // recover the starting configuration of the evolution
-            copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
+          perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+          print_work(count, W, workfilep);
         }
+	    }
 
-        // average of plaquette expectation values for each step
+	    // perform measures only on PBC configuration
+	    perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+	    print_work(count, W, workfilep);
 
-        // splines interpolation of plaquette expectation values along steps -> P as a function of beta
+      // save initial (beta0) and final (target beta) configurations for offline analysis
+      if (param.d_saveconf_analysis_every != 0)
+      {
+        if (count % param.d_saveconf_analysis_every == 0)
+        {
+          write_evolution_conf_on_file(&GCstart, &param, 0);
+          write_evolution_conf_on_file(&GC, &param, 1);
+        }
+      }
 
-        // computation of the gradient of W 
+	    // recover the starting configuration of the evolution
+	    copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
 
-        // protocol parameters update
-
+        // save initial beta0 configuration for backup
+        if (param.d_saveconf_back_every != 0)
+        {
+            if (count % param.d_saveconf_back_every == 0)
+            {
+                // simple
+                write_conf_on_file(&GC, &param);
+                // backup copy
+                write_conf_on_file_back(&GC, &param);
+            }
+        }
     }
 
     time(&time2);
@@ -130,7 +157,7 @@ void real_main(char *in_file)
     if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
     if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
 
-    // save last starting configuration
+    // save last beta0 configuration
     if (param.d_saveconf_back_every != 0)
     {
         write_conf_on_file(&GC, &param);

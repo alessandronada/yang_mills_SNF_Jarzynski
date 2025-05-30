@@ -23,7 +23,7 @@ void real_main(char *in_file)
     Gauge_Conf GC, GCstart;
     Geometry geo;
     GParam param;
-    double W = 0.0, beta0 = 0.0, dbeta = 0.0, act = 0.0, plaqs, plaqt;
+    double W = 0.0, beta0 = 0.0, old_beta = 0.0, act = 0.0, plaqs, plaqt;
 
     char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
     int count, rel, step;
@@ -42,6 +42,9 @@ void real_main(char *in_file)
     // initialize random generator
     initrand(param.d_randseed);
 
+    // initialize protocol parameters
+    init_protocol(&param);
+
     // open data_file
     init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
     init_work_file(&workfilep, &param);
@@ -58,7 +61,7 @@ void real_main(char *in_file)
     // Monte Carlo begin
     time(&time1);
     beta0 = param.d_beta;
-    dbeta = (param.d_J_beta_target - param.d_beta) / param.d_J_steps;
+    //dbeta = (param.d_J_beta_target - param.d_beta) / param.d_J_steps;
 
     // thermalization
     for (count = 0; count < param.d_thermal; count++)
@@ -69,15 +72,15 @@ void real_main(char *in_file)
     // loop on evolutions
     for (count=0; count < param.d_J_evolutions; count++)
     {
-        W = 0.0;
-        param.d_beta = beta0;
+      W = 0.0;
+      param.d_beta = beta0;
 
 	    // updates between the start of each evolution
 	    for (rel = 0; rel < param.d_J_between; rel++)
-            update(&GC, &geo, &param);
+        update(&GC, &geo, &param);
 
-        // increase the index of evolutions
-        GC.evolution_index++;
+      // increase the index of evolutions
+      GC.evolution_index++;
 
 	    // store the starting configuration of the evolution
 	    copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
@@ -85,51 +88,53 @@ void real_main(char *in_file)
 	    // non-equilibrium evolution
 	    for (step = 0; step < param.d_J_steps; step++)
 	    {
-            //change beta and compute work
-            param.d_beta = param.d_beta + dbeta;
-            plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-            act = 1 - 0.5 * (plaqs + plaqt);
-            act *= 6 / param.d_inv_vol;
-	        W += dbeta * act;
+        //change beta and compute work
+        old_beta = param.d_beta
+        param.d_beta = param.d_J_protocol[step];
+          
+        plaquette(&GC, &geo, &param, &plaqs, &plaqt);
+        act = 1 - 0.5 * (plaqs + plaqt);
+        act *= 6 / param.d_inv_vol;
+	      W += (param.d_beta - old_beta) * act;
 	    
-	        // perform a single step of updates with new beta
-            update(&GC, &geo, &param);
+	      // perform a single step of updates with new beta
+        update(&GC, &geo, &param);
 
-            if ((step + 1) % param.d_J_dmeas == 0 && step != (param.d_J_steps - 1))
-            {
-                perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
-                print_work(count, W, workfilep);
-            }
+        if ((step + 1) % param.d_J_dmeas == 0 && step != (param.d_J_steps - 1))
+        {
+          perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+          print_work(count, W, workfilep);
+        }
 	    }
 
 	    // perform measures only on PBC configuration
 	    perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 	    print_work(count, W, workfilep);
 
-        // save initial (beta0) and final (target beta) configurations for offline analysis
-        if (param.d_saveconf_analysis_every != 0)
+      // save initial (beta0) and final (target beta) configurations for offline analysis
+      if (param.d_saveconf_analysis_every != 0)
+      {
+        if (count % param.d_saveconf_analysis_every == 0)
         {
-            if (count % param.d_saveconf_analysis_every == 0)
-            {
-                write_evolution_conf_on_file(&GCstart, &param, 0);
-                write_evolution_conf_on_file(&GC, &param, 1);
-            }
+          write_evolution_conf_on_file(&GCstart, &param, 0);
+          write_evolution_conf_on_file(&GC, &param, 1);
         }
+      }
 
 	    // recover the starting configuration of the evolution
 	    copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
 
-        // save initial beta0 configuration for backup
-        if (param.d_saveconf_back_every != 0)
+      // save initial beta0 configuration for backup
+      if (param.d_saveconf_back_every != 0)
+      {
+        if (count % param.d_saveconf_back_every == 0)
         {
-            if (count % param.d_saveconf_back_every == 0)
-            {
-                // simple
-                write_conf_on_file(&GC, &param);
-                // backup copy
-                write_conf_on_file_back(&GC, &param);
-            }
+          // simple
+          write_conf_on_file(&GC, &param);
+          // backup copy
+          write_conf_on_file_back(&GC, &param);
         }
+      }
     }
 
     time(&time2);
@@ -144,7 +149,7 @@ void real_main(char *in_file)
     // save last beta0 configuration
     if (param.d_saveconf_back_every != 0)
     {
-        write_conf_on_file(&GC, &param);
+      write_conf_on_file(&GC, &param);
     }
 
     // print simulation details

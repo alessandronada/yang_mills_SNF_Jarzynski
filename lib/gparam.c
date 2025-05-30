@@ -85,11 +85,13 @@ void readinput(char *in_file, GParam *param)
 		param->d_L_defect[i]=0;
 		}
 		param->d_N_replica_pt=1;
+
 		param->d_J_evolutions = 0;
 		param->d_J_between = 0;
 		param->d_J_steps = 0;
-        param->d_J_dmeas = 0;
-        param->d_J_beta_target = 6.0;
+    param->d_J_dmeas = 0;
+    param->d_J_beta_target = 6.0;
+    param->d_J_protocol_type = 0;
 		
 		// default = do not compute chi_prime
 		param->d_chi_prime_meas = 0;
@@ -456,6 +458,26 @@ void readinput(char *in_file, GParam *param)
                     }
                   strcpy(param->d_work_file, temp_str);
                   }
+      else if(strncmp(str, "protocol_file", 13)==0)
+                  {
+                  err=fscanf(input, "%s", temp_str);
+                  if(err!=1)
+                    {
+                    fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                    }
+                  strcpy(param->d_protocol_file, temp_str);
+                  }
+      else if(strncmp(str, "smearingrho_file", 16)==0)
+                  {
+                  err=fscanf(input, "%s", temp_str);
+                  if(err!=1)
+                    {
+                    fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                    }
+                  strcpy(param->d_smearingrho_file, temp_str);
+                  }
            else if(strncmp(str, "chiprime_data_file", 18)==0)
                   { 
                   err=fscanf(input, "%s", temp_str);
@@ -603,6 +625,16 @@ void readinput(char *in_file, GParam *param)
                 exit(EXIT_FAILURE);
             }
             param->d_J_dmeas = temp_i;
+            }
+            else if (strncmp(str, "protocol_type", 13) == 0)
+            {
+              err = fscanf(input, "%d", &temp_i);
+              if (err != 1)
+              {
+                fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+              }
+              param->d_J_protocol_type = temp_i;
             }
            else if(strncmp(str, "swap_acc_file", 13)==0)
                   { 
@@ -839,6 +871,87 @@ void init_derived_constants(GParam *param)
 	param->d_n_grid=(int)((2.0*param->d_grid_max/param->d_grid_step)+1.0);
   }
 
+  
+
+void init_protocol(GParam const * const param)
+{
+  FILE *input_protocol;
+  double temp_d;
+  int i;
+  int err;
+
+  err=posix_memalign( (void **) &(param->d_J_protocol), (size_t) DOUBLE_ALIGN, (size_t) param->d_J_steps * sizeof(double));
+	if(err!=0)
+	{
+	  fprintf(stderr, "Problems in allocating protocol parameters! (%s, %d)\n", __FILE__, __LINE__);
+	  exit(EXIT_FAILURE);
+	}			
+
+  if (param->d_J_protocol_type)
+  {
+    input_protocol=fopen(param->d_protocol_file, "r"); // open the input protocol file
+    
+    if(input_protocol==NULL)
+    {
+      fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_protocol_file, __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
+    }
+    else
+    {
+      for(i=0;i<param->d_J_steps;i++)
+	    {
+        err=fscanf(input_protocol, "%lf", &temp_d);
+			  if(err!=1)
+			  {
+			    fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_protocol_file, __FILE__, __LINE__);
+			    exit(EXIT_FAILURE);
+			  }
+			  param->d_J_protocol[i]=temp_d;
+      }
+    }
+  }
+  else
+  {
+    for(i=0;i<param->d_J_steps;i++)
+      param->d_J_protocol[i]=(param->d_J_beta_target - param->d_beta) * (i+1) / param->d_J_steps + param->d_beta;
+  }
+}
+
+void init_smearing_parameter(GParam const * const param)
+{
+  FILE *input_smearingrho;
+  double temp_d;
+  int i;
+  int err;
+
+  err=posix_memalign( (void **) &(param->d_SNF_rho), (size_t) DOUBLE_ALIGN, (size_t) param->d_J_steps * sizeof(double));
+	if(err!=0)
+	{
+	  fprintf(stderr, "Problems in allocating protocol parameters! (%s, %d)\n", __FILE__, __LINE__);
+	  exit(EXIT_FAILURE);
+	}			
+
+  input_smearingrho=fopen(param->d_smearingrho_file, "r"); // open the input smearing rho file
+
+  if(input_smearingrho==NULL)
+  {
+    fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_smearingrho_file, __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  else
+  {
+    for(i=0;i<param->d_J_steps;i++)
+	  {
+      err=fscanf(input_smearingrho, "%lf", &temp_d);
+	    if(err!=1)
+		  {
+		    fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_smearingrho_file, __FILE__, __LINE__);
+		    exit(EXIT_FAILURE);
+		  }
+		  param->d_SNF_rho[i]=temp_d;
+    }
+  }
+}
 
 // initialize data file
 void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tprof_f, GParam const * const param)
