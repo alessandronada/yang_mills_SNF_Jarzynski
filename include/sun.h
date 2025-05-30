@@ -867,6 +867,58 @@ inline void taexp_Su3(SuN * restrict A)
    plus_equal_SuN(A, &aux_sqr);
 }
 
+// Definitions from https://arxiv.org/pdf/2103.11965v3
+
+// TP^i_j^k_l = A^k_j B^i_l
+inline void oplus_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN const *const restrict B) {
+  #ifdef __INTEL_COMPILER
+  __assume_aligned(&(B->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(A->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
+  #endif
+
+  int i, j, k, l;
+
+  for(i=0; i<NCOLOR; i++)
+     {
+     for(j=0; j<NCOLOR; j++)
+        {
+        for(k=0; k<NCOLOR; k++)
+           {
+           for(l=0; l<NCOLOR; l++)
+              {
+              TP->comp[i][j][k][l]=A->comp[m(k,j)]*B->comp[m(i,l)];
+              }
+           }
+        }
+     }
+}
+
+// TP^i_j^k_l = A^i_j B^k_l
+inline void otimes_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN const *const restrict B) {
+  #ifdef __INTEL_COMPILER
+  __assume_aligned(&(B->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(A->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
+  #endif
+
+  int i, j, k, l;
+
+  for(i=0; i<NCOLOR; i++)
+     {
+     for(j=0; j<NCOLOR; j++)
+        {
+        for(k=0; k<NCOLOR; k++)
+           {
+           for(l=0; l<NCOLOR; l++)
+              {
+              TP->comp[i][j][k][l]=A->comp[m(i,j)]*B->comp[m(k,l)];
+              }
+           }
+        }
+     }
+}
+
 inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
 {
 #ifdef __INTEL_COMPILER
@@ -1256,57 +1308,7 @@ inline void TensProd_init_SuN(TensProd * restrict TP, SuN const * const restrict
      }
   }
 
-// Definitions from https://arxiv.org/pdf/2103.11965v3
 
-// TP^i_j^k_l = A^k_j B^i_l
-inline void oplus_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN const *const restrict B) {
-  #ifdef __INTEL_COMPILER
-  __assume_aligned(&(B->comp), DOUBLE_ALIGN);
-  __assume_aligned(&(A->comp), DOUBLE_ALIGN);
-  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
-  #endif
-
-  int i, j, k, l;
-
-  for(i=0; i<NCOLOR; i++)
-     {
-     for(j=0; j<NCOLOR; j++)
-        {
-        for(k=0; k<NCOLOR; k++)
-           {
-           for(l=0; l<NCOLOR; l++)
-              {
-              TP->comp[i][j][k][l]=A->comp[m(k,j)]*B->comp[m(i,l)];
-              }
-           }
-        }
-     }
-}
-
-// TP^i_j^k_l = A^i_j B^k_l
-inline void otimes_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN const *const restrict B) {
-  #ifdef __INTEL_COMPILER
-  __assume_aligned(&(B->comp), DOUBLE_ALIGN);
-  __assume_aligned(&(A->comp), DOUBLE_ALIGN);
-  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
-  #endif
-
-  int i, j, k, l;
-
-  for(i=0; i<NCOLOR; i++)
-     {
-     for(j=0; j<NCOLOR; j++)
-        {
-        for(k=0; k<NCOLOR; k++)
-           {
-           for(l=0; l<NCOLOR; l++)
-              {
-              TP->comp[i][j][k][l]=A->comp[m(i,j)]*B->comp[m(k,l)];
-              }
-           }
-        }
-     }
-}
 
 // SuN B = (SuN A) star (TensProd T) or B^i_j = A^l_n T^l_j^i_n
 inline void star_SuN_TensProd(SuN * restrict B, SuN const * const restrict A, TensProd const * const restrict TP)
