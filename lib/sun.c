@@ -612,6 +612,20 @@ void read_from_binary_file_bigen_SuN(FILE *fp, SuN *A)
 // initialize tensor product
 void TensProd_init_SuN(TensProd *TP, SuN const * const A1, SuN const * const A2);
 
+// TP^i_j^k_l = A^k_j B^i_l
+inline void oplus_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN const *const restrict B);
+
+// TP^i_j^k_l = A^i_j B^k_l
+inline void otimes_SuN(TensProd * restrict TP, SuN const * const restrict A, SuN const *const restrict B);
+
+// SuN B = (SuN A) star (TensProd T) or B^i_j = A^l_n T^l_j^i_n
+inline void star_SuN_TensProd(SuN * restrict B, SuN const * const restrict A, TensProd const * const restrict TP);
+
+// TensProd A = (TensProd B) * (SuN M)
+inline void times_rightSuN_TensProd(TensProd * restrict A, TensProd const * const restrict B, SuN const * const restrict M);
+
+// TensProd A = (SuN M) * (TensProd B)
+inline void times_leftSuN_TensProd(TensProd * restrict A, SuN const * const restrict M, TensProd const * const restrict B);
 
 // convert the fundamental representation matrix B to the adjoint representation matrix A
 void fund_to_adj_SuN(SuNAdj * restrict A, SuN const * const restrict B);

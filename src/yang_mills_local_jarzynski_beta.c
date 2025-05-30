@@ -89,7 +89,7 @@ void real_main(char *in_file)
 	    for (step = 0; step < param.d_J_steps; step++)
 	    {
         //change beta and compute work
-        old_beta = param.d_beta
+        old_beta = param.d_beta;
         param.d_beta = param.d_J_protocol[step];
           
         plaquette(&GC, &geo, &param, &plaqs, &plaqt);

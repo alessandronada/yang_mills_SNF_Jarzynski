@@ -877,7 +877,7 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    equal_SuN(&aux, A);
    ta_SuN(&aux); // aux = 0.5 * (A - A^dagger - trace)
    times_equal_complex_SuN(&aux, -I); // aux is hermitian (eq. (2))
-   SuN Q; equal(&Q, &aux); // Q will not be changed
+   SuN Q; equal_SuN(&Q, &aux); // Q will not be changed
 
    double c0 = creal(det_SuN(&aux));
    int sign_c0;
@@ -1015,21 +1015,21 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    
    SuN B1, B2;
    
-   equal(&aux, &Q); // aux = Q
-   equal(&aux_sqr, &aux); times_equal(&aux_sqr, &aux); // aux_sqr = Q^2
+   equal_SuN(&aux, &Q); // aux = Q
+   equal_SuN(&aux_sqr, &aux); times_equal_SuN(&aux_sqr, &aux); // aux_sqr = Q^2
 
-   one(&B1); times_equal_complex(&B1, b1_real[0] + I*b1_imag[0]); // B1 = b10
-   times_equal_complex(&aux, b1_real[1] + I*b1_imag[1]); plus_equal(&B1, &aux); // B1 = b10 + b11 Q
-   times_equal_complex(&aux_sqr, b1_real[2] + I*b1_imag[2]); plus_equal(&B1, &aux_sqr);
+   one_SuN(&B1); times_equal_complex_SuN(&B1, b1_real[0] + I*b1_imag[0]); // B1 = b10
+   times_equal_complex_SuN(&aux, b1_real[1] + I*b1_imag[1]); plus_equal_SuN(&B1, &aux); // B1 = b10 + b11 Q
+   times_equal_complex_SuN(&aux_sqr, b1_real[2] + I*b1_imag[2]); plus_equal_SuN(&B1, &aux_sqr);
    // now B1 = b10 + b11 Q + b12 Q^2
 
    //Fun! let's do it again
-   equal(&aux, &Q); // aux = Q
-   equal(&aux_sqr, &aux); times_equal(&aux_sqr, &aux); // aux_sqr = Q^2
+   equal_SuN(&aux, &Q); // aux = Q
+   equal_SuN(&aux_sqr, &aux); times_equal_SuN(&aux_sqr, &aux); // aux_sqr = Q^2
 
-   one(&B2); times_equal_complex(&B2, b2_real[0] + I*b2_imag[0]);
-   times_equal_complex(&aux, b2_real[1] + I*b2_imag[1]); plus_equal(&B2, &aux);
-   times_equal_complex(&aux, b2_real[2] + I*b2_imag[2]); plus_equal(&B2, &aux_sqr);
+   one_SuN(&B2); times_equal_complex_SuN(&B2, b2_real[0] + I*b2_imag[0]);
+   times_equal_complex_SuN(&aux, b2_real[1] + I*b2_imag[1]); plus_equal_SuN(&B2, &aux);
+   times_equal_complex_SuN(&aux, b2_real[2] + I*b2_imag[2]); plus_equal_SuN(&B2, &aux_sqr);
 
    oplus_SuN(deriv, &Q, &B1);
    
@@ -1037,18 +1037,18 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    plus_equal_TensProd(deriv, &aux_TP);
    
    // from now on aux is the identity
-   one(&aux); 
+   one_SuN(&aux); 
    one_TensProd(&aux_TP);
    times_equal_complex_TensProd(&aux_TP, h_real[1] + I*h_imag[1]);
-   plus_equal(deriv, &aux_TP);
+   plus_equal_TensProd(deriv, &aux_TP);
    
    otimes_SuN(&aux_TP, &Q, &aux);
    times_equal_complex_TensProd(&aux_TP, h_real[2] + I*h_imag[2]);
-   plus_equal(deriv, &aux_TP);
+   plus_equal_TensProd(deriv, &aux_TP);
 
    otimes_SuN(&aux_TP, &aux, &Q); // can I merge this with previous?
    times_equal_complex_TensProd(&aux_TP, h_real[2] + I*h_imag[2]);
-   plus_equal(deriv, &aux_TP);
+   plus_equal_TensProd(deriv, &aux_TP);
    // now deriv = Q oplus B1 + Q oplus B2 + f1 * Id otimes Id + f2 * (Q otimes Id + Id otimes Q)
 }
 #endif // NCOLOR==3
@@ -1317,7 +1317,7 @@ inline void star_SuN_TensProd(SuN * restrict B, SuN const * const restrict A, Te
   __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
 #endif
  
-   zero(B);
+   zero_SuN(B);
    for (int i = 0; i < NCOLOR; i++) {
       for (int j = 0; j < NCOLOR; j++) {
          for (int l = 0; l < NCOLOR; l++) {
