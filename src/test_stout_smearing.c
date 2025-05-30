@@ -62,10 +62,10 @@ void isotropic_smear_conf_for_test(Gauge_Conf const * const source,
     smeared->update_index = source->update_index;
     for (int dir = 0; dir < STDIM; dir++) {
         for (long r = 0; r < (param->d_volume)/2; r++) {
-            isotropic_stout_smearing_singlelink(source, param, geo, r, dir, rho, &(smeared->lattice[r][dir]));
+            isotropic_stout_smearing_singlelink(source, geo, param, r, dir, rho, &(smeared->lattice[r][dir]));
         }
         for (long r = (param->d_volume)/2; r < param->d_volume; r++) {
-            isotropic_stout_smearing_singlelink(source, param, geo, r, dir, rho, &(smeared->lattice[r][dir]));
+            isotropic_stout_smearing_singlelink(source, geo, param, r, dir, rho, &(smeared->lattice[r][dir]));
         }
     }
 }

@@ -95,7 +95,7 @@ void real_main(char *in_file)
 			  act0 *= 6 / param.d_inv_vol;
 
 			  //stout smearing step: U_i -> g_i(U_i)
-			  isotropic_stout_smearing_update(&GC, &geo, &param, &logJ, param->d_SNF_rho[step]);
+			  isotropic_stout_smearing_update(&GC, &geo, &param, &logJ, (param.d_SNF_rho)[step]);
 
         //change beta: S_beta(i) -> S_beta(i+1)
         param.d_beta = param.d_J_protocol[step];

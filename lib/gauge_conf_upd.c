@@ -1767,7 +1767,7 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 			double abs_detJ;
 			isotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho, &smeared_link, &abs_detJ);
 			equal(&(GC->lattice[r][dir]), &smeared_link);
-			dlogJ += log(detJ)
+			dlogJ += log(abs_detJ);
 		}
 
         #ifdef OPENMP_MODE
@@ -1779,7 +1779,7 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 			double abs_detJ;
 			isotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho, &smeared_link, &abs_detJ);
 			equal(&(GC->lattice[r][dir]), &smeared_link);
-			dlogJ += log(detJ)
+			dlogJ += log(abs_detJ);
 		}
 	}
 
@@ -1848,7 +1848,7 @@ complex double stout_smearing_chainrules(TensProd const * const expderiv, SuN co
    // dOmegadU = Id otimes (-C^dagger)
 
    TensProd dQ_dU; star_TensProd(&dQ_dU, &dQdOmega, &dOmegadU);
-   TensProd dexpQdU; star_TensProd(&dexpQdU, &expderiv, &dQ_dU);
+   TensProd dexpQdU; star_TensProd(&dexpQdU, expderiv, &dQ_dU);
 
    TensProd jacobian; times_rightSuN_TensProd(&jacobian, &dexpQdU, link);
    times_leftSuN_TensProd(&aux_TP, expQ, &otimes_idid);
