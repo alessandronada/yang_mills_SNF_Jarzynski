@@ -1318,15 +1318,18 @@ inline void star_SuN_TensProd(SuN * restrict B, SuN const * const restrict A, Te
   __assume_aligned(&(A->comp), DOUBLE_ALIGN);
   __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
 #endif
- 
-   zero_SuN(B);
-   for (int i = 0; i < NCOLOR; i++) {
-      for (int j = 0; j < NCOLOR; j++) {
-         for (int l = 0; l < NCOLOR; l++) {
-            for (int n = 0; n < NCOLOR; n++) {
-               B->comp[m(i, j)] += A->comp[m(l, n)] * TP->comp[l][j][i][n];
+   int i, j, l, n;
+   double complex sum;
+   //zero_SuN(B);
+   for (i = 0; i < NCOLOR; i++) {
+      for (j = 0; j < NCOLOR; j++) {
+         sum=0.0+0.0*I;
+         for (l = 0; l < NCOLOR; l++) {
+            for (n = 0; n < NCOLOR; n++) {
+               sum += (A->comp[m(l, n)]) * (TP->comp[l][j][i][n]);
             }
          }
+         B->comp[m(i, j)] = sum;
       }
    }
 }
@@ -1343,13 +1346,22 @@ inline void times_rightSuN_TensProd(TensProd * restrict A,
    }
 #endif
 
-   for (int i = 0; i < NCOLOR; i++) {
-      for (int j = 0; j < NCOLOR; j++) {
-         for (int k = 0; k < NCOLOR; k++) {
-            for (int l = 0; l < NCOLOR; l++) {
-               for (int n = 0; n < NCOLOR; n++) {
-                  A->comp[i][j][k][l] += B->comp[i][j][k][n] * M->comp[m(n, l)];
+#ifdef __INTEL_COMPILER
+  __assume_aligned(&(A->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(B->comp), DOUBLE_ALIGN);
+  __assume_aligned(&(M->comp), DOUBLE_ALIGN);
+#endif
+   int i, j, k, l, n;   
+   double complex sum;
+   for (i = 0; i < NCOLOR; i++) {
+      for (j = 0; j < NCOLOR; j++) {
+         for (k = 0; k < NCOLOR; k++) {
+            for (l = 0; l < NCOLOR; l++) {
+               sum=0.0+0.0*I;
+               for (n = 0; n < NCOLOR; n++) {
+                  sum += (B->comp[i][j][k][n]) * (M->comp[m(n, l)]);
                }
+               A->comp[i][j][k][l] = sum;
             }
          }
       }
@@ -1367,14 +1379,17 @@ inline void times_leftSuN_TensProd(TensProd * restrict A,
     exit(EXIT_FAILURE);
    }
 #endif
-
-   for (int i = 0; i < NCOLOR; i++) {
-      for (int j = 0; j < NCOLOR; j++) {
-         for (int k = 0; k < NCOLOR; k++) {
-            for (int l = 0; l < NCOLOR; l++) {
-               for (int n = 0; n < NCOLOR; n++) {
-                  A->comp[i][j][k][l] += M->comp[m(i, n)] * B->comp[n][j][k][l];
+   int i, j, k, l, n;
+   double complex sum;
+   for (i = 0; i < NCOLOR; i++) {
+      for (j = 0; j < NCOLOR; j++) {
+         for (k = 0; k < NCOLOR; k++) {
+            for (l = 0; l < NCOLOR; l++) {
+               sum=0.0+0.0*I;
+               for (n = 0; n < NCOLOR; n++) {
+                  sum += (M->comp[m(i, n)]) * (B->comp[n][j][k][l])
                }
+               A->comp[i][j][k][l] = sum;
             }
          }
       }
