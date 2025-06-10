@@ -913,7 +913,7 @@ void init_protocol(GParam const * const param)
   else
   {
     for(i=0;i<param->d_J_steps;i++)
-      param->d_J_protocol[i]=(param->d_J_beta_target - param->d_beta) * (i+1) / param->d_J_steps + param->d_beta;
+      param->d_J_protocol[i]=(double)((param->d_J_beta_target - param->d_beta) * ((double)(i+1)) / param->d_J_steps + param->d_beta);
   }
 }
 
@@ -949,6 +949,7 @@ void init_smearing_parameter(GParam const * const param)
 		    exit(EXIT_FAILURE);
 		  }
 		  param->d_SNF_rho[i]=temp_d;
+
     }
   }
 }

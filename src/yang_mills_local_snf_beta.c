@@ -54,6 +54,7 @@ void real_main(char *in_file)
     // initialize geometry
     init_indexing_lexeo();
     init_geometry(&geo, &param);
+    
 
     // initialize gauge configuration
     init_gauge_conf(&GC, &param);
@@ -92,7 +93,7 @@ void real_main(char *in_file)
 			  //compute S_beta(i) (U_i)
 			  plaquette(&GC, &geo, &param, &plaqs, &plaqt);
 			  act0 = 1 - 0.5 * (plaqs + plaqt);
-			  act0 *= 6 / param.d_inv_vol;
+			  act0 *= param.d_beta * 6 / param.d_inv_vol;
 
 			  //stout smearing step: U_i -> g_i(U_i)
 			  isotropic_stout_smearing_update(&GC, &geo, &param, &logJ, (param.d_SNF_rho)[step]);
@@ -103,7 +104,7 @@ void real_main(char *in_file)
 			  //compute S_beta(i+1) (g_i(U_i))
         plaquette(&GC, &geo, &param, &plaqs, &plaqt);
         act1 = 1 - 0.5 * (plaqs + plaqt);
-        act1 *= 6 / param.d_inv_vol;
+        act1 *= param.d_beta * 6 / param.d_inv_vol;
 
 			  //compute work step
 	      W += act1 - act0 - logJ;

@@ -1755,7 +1755,6 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 	int j, dir;
 	double dlogJ = 0.0;
 
-	// heatbath
 	for (dir = 0; dir < STDIM; dir++)
 	{
         #ifdef OPENMP_MODE
@@ -1783,17 +1782,6 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 		}
 	}
 
-	// final unitarization
-    #ifdef OPENMP_MODE
-    #pragma omp parallel for num_threads(NTHREADS) private(r, dir)
-    #endif 
-	for (r = 0; r < (param->d_volume); r++)
-	{
-		for (dir = 0; dir < STDIM; dir++)
-		{
-			unitarize(&(GC->lattice[r][dir]));
-		}
-	}
 	*logJ = dlogJ;
 }
 
@@ -1876,7 +1864,7 @@ void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    TensProd exp_deriv;
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson(GC, geo, param, st_position, dir, &link_buff); // using smeared_link as buffer 
-   equal_dag(&staple, &link_buff); // note that Caludio's staple are oppositly oriented => dagger them
+   equal_dag(&staple, &link_buff); // note that Claudio's staple are oppositly oriented => dagger them
 
    times_equal_real(&staple, rho);
 

@@ -1348,7 +1348,7 @@ inline void times_rightSuN_TensProd(TensProd * restrict A,
          for (int k = 0; k < NCOLOR; k++) {
             for (int l = 0; l < NCOLOR; l++) {
                for (int n = 0; n < NCOLOR; n++) {
-                  A->comp[i][j][k][l] = B->comp[i][j][k][n] * M->comp[m(n, l)];
+                  A->comp[i][j][k][l] += B->comp[i][j][k][n] * M->comp[m(n, l)];
                }
             }
          }
@@ -1373,7 +1373,7 @@ inline void times_leftSuN_TensProd(TensProd * restrict A,
          for (int k = 0; k < NCOLOR; k++) {
             for (int l = 0; l < NCOLOR; l++) {
                for (int n = 0; n < NCOLOR; n++) {
-                  A->comp[i][j][k][l] = M->comp[m(i, n)] * B->comp[n][j][k][l];
+                  A->comp[i][j][k][l] += M->comp[m(i, n)] * B->comp[n][j][k][l];
                }
             }
          }
