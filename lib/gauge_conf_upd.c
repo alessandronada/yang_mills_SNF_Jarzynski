@@ -1782,7 +1782,7 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 		}
 	}
 
-	*logJ = dlogJ;
+	*logJ = 2.0 * dlogJ;
 }
 
 void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,

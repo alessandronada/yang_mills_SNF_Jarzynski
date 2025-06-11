@@ -1387,7 +1387,7 @@ inline void times_leftSuN_TensProd(TensProd * restrict A,
             for (l = 0; l < NCOLOR; l++) {
                sum=0.0+0.0*I;
                for (n = 0; n < NCOLOR; n++) {
-                  sum += (M->comp[m(i, n)]) * (B->comp[n][j][k][l])
+                  sum += (M->comp[m(i, n)]) * (B->comp[n][j][k][l]);
                }
                A->comp[i][j][k][l] = sum;
             }
