@@ -1083,10 +1083,12 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    times_equal_complex_SuN(&aux, b2_real[1] + I*b2_imag[1]); plus_equal_SuN(&B2, &aux);
    times_equal_complex_SuN(&aux_sqr, b2_real[2] + I*b2_imag[2]); plus_equal_SuN(&B2, &aux_sqr);
 
-   oplus_SuN(deriv, &Q, &B1);
+   oplus_SuN(deriv, &Q, &B1); // deriv = Q oplus B1
    
-   TensProd aux_TP; oplus_SuN(&aux_TP, &Q, &B2);
-   plus_equal_TensProd(deriv, &aux_TP);
+   equal_SuN(&aux, &Q); // aux = Q
+   equal_SuN(&aux_sqr, &aux); times_equal_SuN(&aux_sqr, &aux); // aux_sqr = Q^2
+   TensProd aux_TP; oplus_SuN(&aux_TP, &aux_sqr, &B2); 
+   plus_equal_TensProd(deriv, &aux_TP); // deriv = Q oplus B1 + Q^2 oplus B2
    
    // from now on aux is the identity
    one_SuN(&aux); 
@@ -1101,7 +1103,7 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    otimes_SuN(&aux_TP, &aux, &Q); // can I merge this with previous?
    times_equal_complex_TensProd(&aux_TP, h_real[2] + I*h_imag[2]);
    plus_equal_TensProd(deriv, &aux_TP);
-   // now deriv = Q oplus B1 + Q oplus B2 + f1 * Id otimes Id + f2 * (Q otimes Id + Id otimes Q)
+   // now deriv = Q oplus B1 + Q^2 oplus B2 + f1 * Id otimes Id + f2 * (Q otimes Id + Id otimes Q)
 }
 #endif // NCOLOR==3
 
