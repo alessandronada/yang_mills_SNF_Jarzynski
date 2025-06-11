@@ -1000,23 +1000,23 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
                 - 2. * sin_u * tmp_real + 2. * cos_u * tmp_imag;
    
    tmp_real = -2. * cos_w - (w_sqr - 3. * u_sqr) * xi_0_w;
-   tmp_imag = 2 * u * cos_w + 6. * u; 
-   r_real[0][1] = 2. * cos_2u - 2. * u * sin_2u 
+   tmp_imag = 2 * u * cos_w + 6. * u * xi_0_w; 
+   r_real[0][1] = 2. * (cos_2u - 2. * u * sin_2u) 
                 + cos_u * tmp_real + sin_u * tmp_imag;
-   r_imag[0][1] = 2. * sin_2u + 2 * u * cos_2u
+   r_imag[0][1] = 2. * (sin_2u + 2. * u * cos_2u)
                 - sin_u * tmp_real + cos_u * tmp_imag;
 
    tmp_real = cos_w - 3. * xi_0_w;
    tmp_imag = 3. * u * xi_0_w;
    r_real[0][2] = -2. * sin_2u + sin_u * tmp_real - cos_u * tmp_imag;
-   r_imag[0][2] = 2 * cos_2u + cos_u * tmp_real + sin_u * tmp_imag;
+   r_imag[0][2] = 2. * cos_2u + cos_u * tmp_real + sin_u * tmp_imag;
 
-   tmp_real = cos_w * xi_0_w + 3. * u_sqr * xi_1_w;
+   tmp_real = cos_w + xi_0_w + 3. * u_sqr * xi_1_w;
    tmp_imag = 4 * u * xi_0_w;
-   r_real[1][0] = -2 * cos_2u + 2. * u * sin_u * tmp_real - 2. * u * cos_u * tmp_imag;
+   r_real[1][0] = -2. * cos_2u + 2. * u * sin_u * tmp_real - 2. * u * cos_u * tmp_imag;
    r_imag[1][0] = -2. * sin_2u + 2. * u * sin_u * tmp_imag + 2. * u * cos_u * tmp_real;
 
-   tmp_real = cos_w  + xi_0_w - 3. * u_sqr * xi_1_w;
+   tmp_real = cos_w + xi_0_w - 3. * u_sqr * xi_1_w;
    tmp_imag = 2. * u * xi_0_w;
    r_real[1][1] = -sin_u * tmp_real + cos_u * tmp_imag;
    r_imag[1][1] = -sin_u * tmp_imag - cos_u * tmp_real;
