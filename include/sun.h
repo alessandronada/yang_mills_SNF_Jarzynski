@@ -981,7 +981,7 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    }
 
    // for the derivative
-   double denominator2 = 1. / (2. * denominator * denominator);
+   double denominator2 = 0.5 * denominator * denominator;
    double xi_1_w = fabs(w) > 0.05 ?
       cos_w / w_sqr - sin(w) / (w * w_sqr) :
       -1./3. + w_sqr*(1./30. + w_sqr*(-1./840 + 1./45360.*w_sqr));
@@ -1026,21 +1026,21 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    r_real[1][2] = cos_u * tmp_real + sin_u * tmp_imag;
    r_imag[1][2] = cos_u * tmp_imag - sin_u * tmp_real;
 
-   double c1[3] = {-2. * (15. * u_sqr + w_sqr),
+   double coeff1[3] = {-2. * (15. * u_sqr + w_sqr),
                    2. * u,
                    3. * u_sqr - w_sqr};
-   double c2[3] = {-24. * u,
+   double coeff2[3] = {-24. * u,
                    1.,
                    -3. * u};
    
    double b1_real[3], b1_imag[3];
    double b2_real[3], b2_imag[3];
    for (int j = 0; j < 3; j++){
-      b1_real[j] = (c1[0] * h_real[j] + c1[1] * r_real[0][j] + c1[2] * r_real[1][j]) * denominator2;
-      b1_imag[j] = (c1[0] * h_imag[j] + c1[1] * r_imag[0][j] + c1[2] * r_imag[1][j]) * denominator2;
+      b1_real[j] = (coeff1[0] * h_real[j] + coeff1[1] * r_real[0][j] + coeff1[2] * r_real[1][j]) * denominator2;
+      b1_imag[j] = (coeff1[0] * h_imag[j] + coeff1[1] * r_imag[0][j] + coeff1[2] * r_imag[1][j]) * denominator2;
 
-      b2_real[j] = (c2[0] * h_real[j] + c2[1] * r_real[0][j] + c2[2] * r_real[1][j]) * denominator2;
-      b2_imag[j] = (c2[0] * h_imag[j] + c2[1] * r_imag[0][j] + c2[2] * r_imag[1][j]) * denominator2;
+      b2_real[j] = (coeff2[0] * h_real[j] + coeff2[1] * r_real[0][j] + coeff2[2] * r_real[1][j]) * denominator2;
+      b2_imag[j] = (coeff2[0] * h_imag[j] + coeff2[1] * r_imag[0][j] + coeff2[2] * r_imag[1][j]) * denominator2;
    }
 
    // f_j(-c0) = (-1)^j f_j*(c0), eq(34)
@@ -1081,7 +1081,7 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
 
    one_SuN(&B2); times_equal_complex_SuN(&B2, b2_real[0] + I*b2_imag[0]);
    times_equal_complex_SuN(&aux, b2_real[1] + I*b2_imag[1]); plus_equal_SuN(&B2, &aux);
-   times_equal_complex_SuN(&aux, b2_real[2] + I*b2_imag[2]); plus_equal_SuN(&B2, &aux_sqr);
+   times_equal_complex_SuN(&aux_sqr, b2_real[2] + I*b2_imag[2]); plus_equal_SuN(&B2, &aux_sqr);
 
    oplus_SuN(deriv, &Q, &B1);
    
