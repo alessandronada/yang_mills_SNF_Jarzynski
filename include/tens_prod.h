@@ -236,18 +236,22 @@ inline void star_TensProd(TensProd * restrict A,
       exit(EXIT_FAILURE);
       }
 #endif
-   zero_TensProd(A);
+   // zero_TensProd(A);
+   int i, j, k, l, m, n;
+   double complex sum;
    
    // this is not pretty
-   for (int i = 0; i < NCOLOR; i++) {
-      for (int j = 0; j < NCOLOR; j++) {
-         for (int k = 0; k < NCOLOR; k++) {
-            for (int l = 0; l < NCOLOR; l++) {
-               for (int m = 0; m < NCOLOR; m++) {
-                  for (int n = 0; n < NCOLOR; n++) {
-                     A->comp[i][j][k][l] += B->comp[i][n][m][l] * C->comp[n][j][k][m];
+   for (i = 0; i < NCOLOR; i++) {
+      for (j = 0; j < NCOLOR; j++) {
+         for (k = 0; k < NCOLOR; k++) {
+            for (l = 0; l < NCOLOR; l++) {
+               sum=0.0+0.0*I;
+               for (m = 0; m < NCOLOR; m++) {
+                  for (n = 0; n < NCOLOR; n++) {
+                     sum += B->comp[i][n][m][l] * C->comp[n][j][k][m];
                   }
                }
+               A->comp[i][j][k][l] = sum;
             }
          }
       }
