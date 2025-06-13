@@ -930,6 +930,7 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    ta_SuN(&aux); // aux = 0.5 * (A - A^dagger - trace)
    times_equal_complex_SuN(&aux, -I); // aux is hermitian (eq. (2))
    SuN Q; equal_SuN(&Q, &aux); // Q will not be changed
+   SuN Q2; equal_SuN(&Q2, &aux); times_equal_SuN(&Q2, &aux); // Q^2 will not be changed
 
    double c0 = creal(det_SuN(&aux));
    int sign_c0;
@@ -939,8 +940,8 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
       c0 = -c0;
    }
 
-   equal_SuN(&aux_sqr, &aux);
-   times_equal_SuN(&aux_sqr, &aux);
+   equal_SuN(&aux_sqr, &Q2);
+   //times_equal_SuN(&aux_sqr, &aux);
 
    // retr(.) = 1/3 Tr(.)
    double sqrt_c1_third = sqrt(0.5 * retr_SuN(&aux_sqr)); // sqrt(c1 / 3)
@@ -951,29 +952,29 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    double w = sqrt(3.) * sqrt_c1_third * sin(theta_third);
    double xi_0_w = fabs(w) > 0.05 ?
       sin(w) / w :
-      1 - w * w / 6. * (1 - w * w / 20. * (1 - w * w / 42.));
+      1. - w * w / 6. * (1 - w * w / 20. * (1. - w * w / 42.));
 
    double h_real[3], h_imag[3];
    
    double cos_u = cos(u); // useful terms
    double cos_w = cos(w);
    double sin_u = sin(u);
-   double cos_2u = cos(2 * u);
-   double sin_2u = sin(2 * u);
+   double cos_2u = cos(2. * u);
+   double sin_2u = sin(2. * u);
    double u_sqr = u * u;
    double w_sqr = w * w;
 
-   h_real[0] = (u_sqr - w_sqr) * cos_2u + (8 * u_sqr * cos_w) * cos_u + 2 * u * xi_0_w * (3 * u_sqr + w_sqr) * sin_u;
-   h_imag[0] = (u_sqr - w_sqr) * sin_2u - (8 * u_sqr * cos_w) * sin_u + 2 * u * xi_0_w * (3 * u_sqr + w_sqr) * cos_u;
+   h_real[0] = (u_sqr - w_sqr) * cos_2u + (8. * u_sqr * cos_w) * cos_u + 2. * u * xi_0_w * (3. * u_sqr + w_sqr) * sin_u;
+   h_imag[0] = (u_sqr - w_sqr) * sin_2u - (8. * u_sqr * cos_w) * sin_u + 2. * u * xi_0_w * (3. * u_sqr + w_sqr) * cos_u;
 
-   h_real[1] = (2 * u) * cos_2u - (2 * u * cos_w) * cos_u + (3 * u_sqr - w_sqr) * xi_0_w * sin_u;
-   h_imag[1] = (2 * u) * sin_2u + (2 * u * cos_w) * sin_u + (3 * u_sqr - w_sqr) * xi_0_w * cos_u;
+   h_real[1] = (2. * u) * cos_2u - (2. * u * cos_w) * cos_u + (3. * u_sqr - w_sqr) * xi_0_w * sin_u;
+   h_imag[1] = (2. * u) * sin_2u + (2. * u * cos_w) * sin_u + (3. * u_sqr - w_sqr) * xi_0_w * cos_u;
 
-   h_real[2] = cos_2u - cos_w * cos_u - 3 * u * xi_0_w * sin_u;
-   h_imag[2] = sin_2u + cos_w * sin_u - 3 * u * xi_0_w * cos_u;
+   h_real[2] = cos_2u - cos_w * cos_u - 3. * u * xi_0_w * sin_u;
+   h_imag[2] = sin_2u + cos_w * sin_u - 3. * u * xi_0_w * cos_u;
    
    // h -> f;
-   double denominator = 1. / (9 * u_sqr - w_sqr);
+   double denominator = 1. / (9. * u_sqr - w_sqr);
    for (int i = 0; i < 3; i++)
    {
       h_real[i] *= denominator;
@@ -984,7 +985,7 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    double denominator2 = 0.5 * denominator * denominator;
    double xi_1_w = fabs(w) > 0.05 ?
       cos_w / w_sqr - sin(w) / (w * w_sqr) :
-      -1./3. + w_sqr*(1./30. + w_sqr*(-1./840 + 1./45360.*w_sqr));
+      -1./3. + w_sqr*(1./30. + w_sqr*(-1./840. + 1./45360.*w_sqr));
 
    double r_real[2][3], r_imag[2][3];
    //double **r_real = _r_real - 1; // never do r_real[0] !!!
@@ -992,6 +993,7 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
 
    double tmp_real, tmp_imag;
 
+   // r_0^(1)
    tmp_real = (8. * u * cos_w + u * (3. * u_sqr + w_sqr) * xi_0_w);
    tmp_imag = (-4. * u_sqr * cos_w + (9. * u_sqr + w_sqr) * xi_0_w);
    r_real[0][0] = 2. * (u * cos_2u - (u_sqr - w_sqr) * sin_2u)
@@ -999,28 +1001,33 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    r_imag[0][0] = 2. * (u * sin_2u + (u_sqr - w_sqr) * cos_2u)
                 - 2. * sin_u * tmp_real + 2. * cos_u * tmp_imag;
    
+   // r_1^(1)
    tmp_real = -2. * cos_w - (w_sqr - 3. * u_sqr) * xi_0_w;
-   tmp_imag = 2 * u * cos_w + 6. * u * xi_0_w; 
+   tmp_imag = 2. * u * cos_w + 6. * u * xi_0_w; 
    r_real[0][1] = 2. * (cos_2u - 2. * u * sin_2u) 
                 + cos_u * tmp_real + sin_u * tmp_imag;
    r_imag[0][1] = 2. * (sin_2u + 2. * u * cos_2u)
                 - sin_u * tmp_real + cos_u * tmp_imag;
 
+   // r_2^(1)
    tmp_real = cos_w - 3. * xi_0_w;
    tmp_imag = 3. * u * xi_0_w;
    r_real[0][2] = -2. * sin_2u + sin_u * tmp_real - cos_u * tmp_imag;
    r_imag[0][2] = 2. * cos_2u + cos_u * tmp_real + sin_u * tmp_imag;
 
+   // r_0^(2)
    tmp_real = cos_w + xi_0_w + 3. * u_sqr * xi_1_w;
-   tmp_imag = 4 * u * xi_0_w;
+   tmp_imag = 4. * u * xi_0_w;
    r_real[1][0] = -2. * cos_2u + 2. * u * sin_u * tmp_real - 2. * u * cos_u * tmp_imag;
    r_imag[1][0] = -2. * sin_2u + 2. * u * sin_u * tmp_imag + 2. * u * cos_u * tmp_real;
 
+   // r_1^(2)
    tmp_real = cos_w + xi_0_w - 3. * u_sqr * xi_1_w;
    tmp_imag = 2. * u * xi_0_w;
    r_real[1][1] = -sin_u * tmp_real + cos_u * tmp_imag;
    r_imag[1][1] = -sin_u * tmp_imag - cos_u * tmp_real;
 
+   // r_2^(2)
    tmp_real = xi_0_w;
    tmp_imag = -3. * u * xi_1_w;
    r_real[1][2] = cos_u * tmp_real + sin_u * tmp_imag;
@@ -1059,35 +1066,42 @@ inline void taexp_Su3_withderiv(SuN * restrict A, TensProd * restrict deriv)
    one_SuN(A);
    times_equal_complex_SuN(A, h_real[0] + h_imag[0] * I);
 
+   equal_SuN(&aux, &Q);
    times_equal_complex_SuN(&aux, h_real[1] + h_imag[1] * I);
    plus_equal_SuN(A, &aux);
 
+   equal_SuN(&aux_sqr, &Q2);
    times_equal_complex_SuN(&aux_sqr, h_real[2] + h_imag[2] * I);
    plus_equal_SuN(A, &aux_sqr);
    
    SuN B1, B2;
    
-   equal_SuN(&aux, &Q); // aux = Q
-   equal_SuN(&aux_sqr, &aux); times_equal_SuN(&aux_sqr, &aux); // aux_sqr = Q^2
+   one_SuN(&B1); 
+   times_equal_complex_SuN(&B1, b1_real[0] + I*b1_imag[0]); // B1 = b10
 
-   one_SuN(&B1); times_equal_complex_SuN(&B1, b1_real[0] + I*b1_imag[0]); // B1 = b10
-   times_equal_complex_SuN(&aux, b1_real[1] + I*b1_imag[1]); plus_equal_SuN(&B1, &aux); // B1 = b10 + b11 Q
-   times_equal_complex_SuN(&aux_sqr, b1_real[2] + I*b1_imag[2]); plus_equal_SuN(&B1, &aux_sqr);
+   equal_SuN(&aux, &Q);
+   times_equal_complex_SuN(&aux, b1_real[1] + I*b1_imag[1]); 
+   plus_equal_SuN(&B1, &aux); // B1 = b10 + b11 Q
+
+   equal_SuN(&aux_sqr, &Q2);
+   times_equal_complex_SuN(&aux_sqr, b1_real[2] + I*b1_imag[2]); 
+   plus_equal_SuN(&B1, &aux_sqr);
    // now B1 = b10 + b11 Q + b12 Q^2
 
    //Fun! let's do it again
-   equal_SuN(&aux, &Q); // aux = Q
-   equal_SuN(&aux_sqr, &aux); times_equal_SuN(&aux_sqr, &aux); // aux_sqr = Q^2
+   one_SuN(&B2); 
+   times_equal_complex_SuN(&B2, b2_real[0] + I*b2_imag[0]);
 
-   one_SuN(&B2); times_equal_complex_SuN(&B2, b2_real[0] + I*b2_imag[0]);
-   times_equal_complex_SuN(&aux, b2_real[1] + I*b2_imag[1]); plus_equal_SuN(&B2, &aux);
-   times_equal_complex_SuN(&aux_sqr, b2_real[2] + I*b2_imag[2]); plus_equal_SuN(&B2, &aux_sqr);
+   equal_SuN(&aux, &Q);
+   times_equal_complex_SuN(&aux, b2_real[1] + I*b2_imag[1]); 
+   plus_equal_SuN(&B2, &aux);
+
+   equal_SuN(&aux_sqr, &Q2);
+   times_equal_complex_SuN(&aux_sqr, b2_real[2] + I*b2_imag[2]); 
+   plus_equal_SuN(&B2, &aux_sqr);
 
    oplus_SuN(deriv, &Q, &B1); // deriv = Q oplus B1
-   
-   equal_SuN(&aux, &Q); // aux = Q
-   equal_SuN(&aux_sqr, &aux); times_equal_SuN(&aux_sqr, &aux); // aux_sqr = Q^2
-   TensProd aux_TP; oplus_SuN(&aux_TP, &aux_sqr, &B2); 
+   TensProd aux_TP; oplus_SuN(&aux_TP, &Q2, &B2); 
    plus_equal_TensProd(deriv, &aux_TP); // deriv = Q oplus B1 + Q^2 oplus B2
    
    // from now on aux is the identity
