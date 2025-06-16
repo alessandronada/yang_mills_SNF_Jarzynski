@@ -54,6 +54,34 @@ void test_taexp_SU3(SuN const * const test_A) {
     printf("Max difference between SUN_expA and SU3_expA: %e\n", elem_max);
 }
 
+void isotropic_stout_smearing_withjacobi_test(const GAUGE_GROUP* link,
+                                        const GAUGE_GROUP* staple,
+                                        double rho,
+                                        GAUGE_GROUP* smeared_link,
+                                        double* abs_detJ)
+{
+#if NCOLOR != 3
+   fprintf(stderr, "Jacobiano implementato solo per SU(3), %s %d", __FILE__, __LINE__);
+   exit(EXIT_FAILURE);
+#endif
+  GAUGE_GROUP link_buff;
+   TensProd exp_deriv;
+   
+   times_equal_real(&staple, rho);
+
+   GAUGE_GROUP expQ; times_dag2(&expQ, &staple, link); // this is Omega = C U^dagger
+   taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ) = exp(ta(Omega))
+
+   equal(&link_buff, &expQ); 
+   times_equal(&link_buff, link); // link = exp(i Q(Omega)) * link
+   unitarize(&link_buff); // just correct numerical error
+
+   complex double detJ = stout_smearing_chainrules(&exp_deriv, &expQ, &staple, link);
+
+   *abs_detJ = cabs(detJ);
+   equal(smeared_link, &link_buff); // no problems if smeared link in GC
+}
+
 void isotropic_smear_conf_for_test(Gauge_Conf const * const source,
                               Gauge_Conf* smeared,
                               GParam const * const param,
@@ -88,87 +116,102 @@ void anisotropic_smear_conf_for_test(Gauge_Conf const * const source,
 
 void real_main(char* in_file) {
     
-    GParam param;
-    readinput(in_file, &param);
-    initrand(param.d_randseed);
+  SuN link, staple, smeared_link;
+  double abs_detJ;
 
-    print_parameters_local(&param, 0, 0);
+  rand_matrix_SuN(&link);
+  rand_matrix_SuN(&staple);
+  one_SuN(&smeared_link);
 
-    Geometry geo;
-    init_indexing_lexeo();
-    init_geometry(&geo, &param);
+  print_on_screen_SuN(&link);
+  print_on_screen_SuN(&staple);
 
-    Gauge_Conf GC, smeared_GC;
-    init_gauge_conf(&GC, &param);
-    init_gauge_conf_from_gauge_conf(&smeared_GC, &GC, &param);
+  isotropic_stout_smearing_withjacobi_test(link, staple, 0.05, &smeared_link, &abs_detJ);
+  
+  print_on_screen_SuN(&smeared_link);
+  printf("%f ", abs_detJ);
 
-    // Test the taexp function for SU(3)
-    SuN A;
-    one(&A);
-    A.comp[1] += 0.1;
-    test_taexp_SU3(&A);
+    // GParam param;
+    // readinput(in_file, &param);
+    // initrand(param.d_randseed);
 
-    rand_matrix_SuN(&A);
-    test_taexp_SU3(&A);
+    // print_parameters_local(&param, 0, 0);
 
-    // Add any additional tests or functionality here
-    double rho[STDIM*STDIM];
-    for (int mu = 0; mu < STDIM; mu++) {
-        printf("%d ", mu); fflush(stdout);
-        for (int nu = 0; nu < STDIM; nu++) {
-            rho[mu*STDIM + nu] = casuale();
-        }
-    }
-    // printf("%f \n", rho[0]);
+    // Geometry geo;
+    // init_indexing_lexeo();
+    // init_geometry(&geo, &param);
 
-    printf("%f ", creal(GC.lattice[0][0].comp[0]));
-    isotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho[0]);
-    printf("%f ", creal(smeared_GC.lattice[0][0].comp[0]));
-    anisotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho);
-    printf("%f \n", creal(smeared_GC.lattice[0][0].comp[0]));
+    // Gauge_Conf GC, smeared_GC;
+    // init_gauge_conf(&GC, &param);
+    // init_gauge_conf_from_gauge_conf(&smeared_GC, &GC, &param);
 
-    for (int i = 1; i <= param.d_thermal; i++){
-        update(&GC, &geo, &param);
+    // // Test the taexp function for SU(3)
+    // SuN A;
+    // one(&A);
+    // A.comp[1] += 0.1;
+    // test_taexp_SU3(&A);
 
-        if (param.d_saveconf_back_every != 0)
-            if (i % param.d_saveconf_back_every == 0) {
-                write_conf_on_file_back(&GC, &param);
-        }
-    }
+    // rand_matrix_SuN(&A);
+    // test_taexp_SU3(&A);
 
-    FILE *datafilep, *chipfilep, *topcfilep;
-    init_data_file(&datafilep, &chipfilep, &topcfilep, &param);
-    double rho_value = 0.;
+    // // Add any additional tests or functionality here
+    // double rho[STDIM*STDIM];
+    // for (int mu = 0; mu < STDIM; mu++) {
+    //     printf("%d ", mu); fflush(stdout);
+    //     for (int nu = 0; nu < STDIM; nu++) {
+    //         rho[mu*STDIM + nu] = casuale();
+    //     }
+    // }
+    // // printf("%f \n", rho[0]);
 
-    for (int i = 1; i <= param.d_sample; i++) {
-        update(&GC, &geo, &param);
+    // printf("%f ", creal(GC.lattice[0][0].comp[0]));
+    // isotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho[0]);
+    // printf("%f ", creal(smeared_GC.lattice[0][0].comp[0]));
+    // anisotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho);
+    // printf("%f \n", creal(smeared_GC.lattice[0][0].comp[0]));
 
-        if (param.d_measevery != 0)
-            if (i % param.d_measevery == 0) {
-                double plaqs, plaqt;
-                plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-                fprintf(datafilep, "%ld %.3f %e %e \n", GC.update_index, 0., plaqs, plaqt);
-                for (rho_value = 0.; rho_value < 0.5; rho_value += 0.01) {
-                    isotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho_value);
-                    plaquette(&smeared_GC, &geo, &param, &plaqs, &plaqt);
-                    fprintf(datafilep, "%ld %.3f %e %e \n", GC.update_index, rho_value, plaqs, plaqt);
-                }
-                fflush(datafilep);
-        }
+    // for (int i = 1; i <= param.d_thermal; i++){
+    //     update(&GC, &geo, &param);
 
-        if (param.d_saveconf_back_every != 0)
-            if (i % param.d_saveconf_back_every == 0) {
-                write_conf_on_file(&GC, &param);
-        }
-    }
+    //     if (param.d_saveconf_back_every != 0)
+    //         if (i % param.d_saveconf_back_every == 0) {
+    //             write_conf_on_file_back(&GC, &param);
+    //     }
+    // }
 
-    fclose(datafilep);
-    if (param.d_chi_prime_meas) fclose(chipfilep);
-    if (param.d_topcharge_tprof_meas) fclose(topcfilep);
+    // FILE *datafilep, *chipfilep, *topcfilep;
+    // init_data_file(&datafilep, &chipfilep, &topcfilep, &param);
+    // double rho_value = 0.;
 
-    free_gauge_conf(&GC, &param);
-    free_gauge_conf(&smeared_GC, &param);
-    free_geometry(&geo, &param);
+    // for (int i = 1; i <= param.d_sample; i++) {
+    //     update(&GC, &geo, &param);
+
+    //     if (param.d_measevery != 0)
+    //         if (i % param.d_measevery == 0) {
+    //             double plaqs, plaqt;
+    //             plaquette(&GC, &geo, &param, &plaqs, &plaqt);
+    //             fprintf(datafilep, "%ld %.3f %e %e \n", GC.update_index, 0., plaqs, plaqt);
+    //             for (rho_value = 0.; rho_value < 0.5; rho_value += 0.01) {
+    //                 isotropic_smear_conf_for_test(&GC, &smeared_GC, &param, &geo, rho_value);
+    //                 plaquette(&smeared_GC, &geo, &param, &plaqs, &plaqt);
+    //                 fprintf(datafilep, "%ld %.3f %e %e \n", GC.update_index, rho_value, plaqs, plaqt);
+    //             }
+    //             fflush(datafilep);
+    //     }
+
+    //     if (param.d_saveconf_back_every != 0)
+    //         if (i % param.d_saveconf_back_every == 0) {
+    //             write_conf_on_file(&GC, &param);
+    //     }
+    // }
+
+    // fclose(datafilep);
+    // if (param.d_chi_prime_meas) fclose(chipfilep);
+    // if (param.d_topcharge_tprof_meas) fclose(topcfilep);
+
+    // free_gauge_conf(&GC, &param);
+    // free_gauge_conf(&smeared_GC, &param);
+    // free_geometry(&geo, &param);
 }
 
 int main(int argc, char **argv) {
