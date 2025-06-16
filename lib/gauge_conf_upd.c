@@ -1758,7 +1758,7 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 	for (dir = 0; dir < STDIM; dir++)
 	{
         #ifdef OPENMP_MODE
-        #pragma omp parallel for num_threads(NTHREADS) private(r)
+        #pragma omp parallel for num_threads(NTHREADS) private(r) reduction( + : dlogJ )
         #endif 
 		for (r = 0; r < (param->d_volume) / 2; r++)
 		{
@@ -1770,7 +1770,7 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 		}
 
         #ifdef OPENMP_MODE
-        #pragma omp parallel for num_threads(NTHREADS) private(r)
+        #pragma omp parallel for num_threads(NTHREADS) private(r) reduction( + : dlogJ )
         #endif 
 		for (r = (param->d_volume) / 2; r < (param->d_volume); r++)
 		{
