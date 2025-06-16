@@ -54,8 +54,45 @@ void test_taexp_SU3(SuN const * const test_A) {
     printf("Max difference between SUN_expA and SU3_expA: %e\n", elem_max);
 }
 
+complex double stout_smearing_chainrules_test(TensProd const * const expderiv, SuN const * const expQ, SuN const * const C, SuN const * const link)
+{
+   // useful tensors (maybe)
+   TensProd otimes_idid; one_TensProd(&otimes_idid);
+   TensProd oplus_idid; zero_TensProd(&oplus_idid);
+   for (int i = 0; i < NCOLOR; i++) {
+      for (int j = 0; j < NCOLOR; j++) {
+         oplus_idid.comp[i][j][j][i] = 1. + I*0;
+      }
+   }
+
+   // d Q / d Omega
+   TensProd dQdOmega, aux_TP;
+   equal_TensProd(&dQdOmega, &otimes_idid);
+   times_equal_complex_TensProd(&dQdOmega, -0.5*I);
+   equal_TensProd(&aux_TP, &oplus_idid);
+   times_equal_complex_TensProd(&aux_TP, +0.5*I / (double) NCOLOR);
+   plus_equal_TensProd(&dQdOmega, &aux_TP);
+   // dQdOmega = 0.5 I / NCOLOR * (Id oplus Id) - 0.5 I (Id otimes Id)
+
+   // d Omega / d U
+   SuN identity; one(&identity);
+   SuN aux_mtr; equal_dag(&aux_mtr, C); times_equal_real(&aux_mtr, -1);
+   TensProd dOmegadU; otimes_SuN(&dOmegadU, &identity, &aux_mtr);
+   // dOmegadU = Id otimes (-C^dagger)
+
+   TensProd dQ_dU; star_TensProd(&dQ_dU, &dQdOmega, &dOmegadU);
+   TensProd dexpQdU; star_TensProd(&dexpQdU, expderiv, &dQ_dU);
+
+   TensProd jacobian; times_rightSuN_TensProd(&jacobian, &dexpQdU, link);
+   times_leftSuN_TensProd(&aux_TP, expQ, &otimes_idid);
+   plus_equal_TensProd(&jacobian, &aux_TP);
+   // jacobian = (dexpQdU dot link) + (expQ dot (Id otimes Id))
+
+   return det_TensProd(&jacobian);
+}
+
 void isotropic_stout_smearing_withjacobi_test(const GAUGE_GROUP* link,
-                                        const GAUGE_GROUP* staple,
+                                        GAUGE_GROUP* staple,
                                         double rho,
                                         GAUGE_GROUP* smeared_link,
                                         double* abs_detJ)
@@ -67,16 +104,16 @@ void isotropic_stout_smearing_withjacobi_test(const GAUGE_GROUP* link,
   GAUGE_GROUP link_buff;
    TensProd exp_deriv;
    
-   times_equal_real(&staple, rho);
+   times_equal_real(staple, rho);
 
-   GAUGE_GROUP expQ; times_dag2(&expQ, &staple, link); // this is Omega = C U^dagger
+   GAUGE_GROUP expQ; times_dag2(&expQ, staple, link); // this is Omega = C U^dagger
    taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ) = exp(ta(Omega))
 
    equal(&link_buff, &expQ); 
    times_equal(&link_buff, link); // link = exp(i Q(Omega)) * link
    unitarize(&link_buff); // just correct numerical error
 
-   complex double detJ = stout_smearing_chainrules(&exp_deriv, &expQ, &staple, link);
+   complex double detJ = stout_smearing_chainrules_test(&exp_deriv, &expQ, staple, link);
 
    *abs_detJ = cabs(detJ);
    equal(smeared_link, &link_buff); // no problems if smeared link in GC
@@ -116,24 +153,24 @@ void anisotropic_smear_conf_for_test(Gauge_Conf const * const source,
 
 void real_main(char* in_file) {
     
+  GParam param;
+  readinput(in_file, &param);
+  initrand(param.d_randseed);
+
   SuN link, staple, smeared_link;
   double abs_detJ;
-
   rand_matrix_SuN(&link);
   rand_matrix_SuN(&staple);
   one_SuN(&smeared_link);
-
+  fprintf(stderr, "test\n");
   print_on_screen_SuN(&link);
   print_on_screen_SuN(&staple);
-
-  isotropic_stout_smearing_withjacobi_test(link, staple, 0.05, &smeared_link, &abs_detJ);
-  
+  fprintf(stderr, "test\n");
+  isotropic_stout_smearing_withjacobi_test(&link, &staple, 0.05, &smeared_link, &abs_detJ);
+  fprintf(stderr, "test\n");
   print_on_screen_SuN(&smeared_link);
   printf("%f ", abs_detJ);
-
-    // GParam param;
-    // readinput(in_file, &param);
-    // initrand(param.d_randseed);
+  fprintf(stderr, "test\n");
 
     // print_parameters_local(&param, 0, 0);
 
