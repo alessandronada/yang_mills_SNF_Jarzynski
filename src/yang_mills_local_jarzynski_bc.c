@@ -78,7 +78,7 @@ void real_main(char *in_file)
   {
     W = 0.0;
     
-    set_bound_cond(&GC, &param, newC);
+    set_bound_cond(&GC, &param, 0.0);
     
     // updates between the start of each evolution
     for (rel = 0; rel < param.d_J_between; rel++)

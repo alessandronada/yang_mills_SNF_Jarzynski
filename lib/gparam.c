@@ -954,7 +954,7 @@ void init_smearing_parameter(GParam const * const param)
   }
 }
 
-void init_defect_smearing_parameter(GParam const * const param, int rect_vol)
+void init_defect_smearing_parameter(GParam const * const param, long rect_vol)
 {
   FILE *input_smearingrho;
   double temp_d;
@@ -982,7 +982,7 @@ void init_defect_smearing_parameter(GParam const * const param, int rect_vol)
         for(s=0;s<rect_vol;s++)
           for(p=0;p<2*(STDIM-1);p++)
           {
-            int rho_index = 2*(STDIM-1)*rect_vol*STDIM*i + 2*(STDIM-1)*rect_vol*mu + 2*(STDIM-1)*s + p;
+            long rho_index = 2 * (STDIM-1) * rect_vol * STDIM * i + 2 * (STDIM-1) * rect_vol * mu + 2 * (STDIM-1) * s + p;
             err=fscanf(input_smearingrho, "%lf", &temp_d);
 	          if(err!=1)
             { 

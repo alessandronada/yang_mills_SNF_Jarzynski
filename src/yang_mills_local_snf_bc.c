@@ -23,7 +23,7 @@ void real_main(char *in_file)
     Gauge_Conf GC, GCstart;
     Geometry geo;
     GParam param;
-    Rectangle *most_update, *clover_rectangle, *defect_rect;
+    Rectangle *most_update, *clover_rectangle, defect_rect;
     double W = 0.0, act0 = 0.0, act1 = 0.0, logJ;
     
     char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
@@ -67,7 +67,7 @@ void real_main(char *in_file)
     init_rect(&defect_rect, 0, &param);
 
     // initialize smearing parameters
-    init_defect_smearing_parameter(&param, defect_rect->d_vol_rect);
+    init_defect_smearing_parameter(&param, defect_rect.d_vol_rect);
     
     // Monte Carlo begin
     time(&time1);
@@ -83,7 +83,7 @@ void real_main(char *in_file)
     {
         W = 0.0;
         
-        set_bound_cond(&GC, &param, BCpar);
+        set_bound_cond(&GC, &param, 0.0);
         
         // updates between the start of each evolution
         for (rel = 0; rel < param.d_J_between; rel++)
@@ -102,7 +102,7 @@ void real_main(char *in_file)
             act0 = compute_defect_action(&GC, &geo, &param);
             
             //stout smearing step: U_i -> g_i(U_i)
-            defect_stout_smearing_update(&GC, &geo, &param, defect_rect, &logJ, param.d_SNF_rho[step]);
+            defect_stout_smearing_update(&GC, &geo, &param, &defect_rect, &logJ, param.d_SNF_rho + 2 * (STDIM-1) * defect_rect.d_vol_rect * STDIM * step);
             
             //change BC: S_C(i) -> S_C(i+1)
             set_bound_cond(&GC, &param, param.d_J_protocol[step]);
@@ -176,7 +176,7 @@ void real_main(char *in_file)
     
     // free rectangles for hierarchical update
     free_rect_hierarc(most_update, clover_rectangle, &param);
-    free_rect(defect_rect, &param)
+    free_rect(&defect_rect);
     
     // free hierarchical update parameters
     free_hierarc_params(&param);

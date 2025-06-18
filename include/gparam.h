@@ -111,9 +111,9 @@ typedef struct GParam {
 void remove_white_line_and_comments(FILE *input);
 void readinput(char *in_file, GParam *param);
 void init_derived_constants(GParam *param);
-void init_protocol(GParam const * const param);
+void init_protocol(GParam const * const param, double start, double end);
 void init_smearing_parameter(GParam const * const param);
-void init_defect_smearing_parameter(GParam const * const param);
+void init_defect_smearing_parameter(GParam const * const param, long rect_vol);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tprof_f, GParam const * const param);
 void init_work_file(FILE **workfilep, GParam const * const param);
 void free_hierarc_params(GParam *param);

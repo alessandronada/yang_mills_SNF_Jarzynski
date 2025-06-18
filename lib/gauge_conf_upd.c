@@ -1922,8 +1922,8 @@ void defect_stout_smearing_update(Gauge_Conf * GC,
 			long r = defect_rect->rect_sites[s]; // r = site index on lattice
 			GAUGE_GROUP smeared_link;
 			double abs_detJ;
-         int rho_index = 2*(STDIM-1)*((defect_rect->d_vol_rect)*dir + s) // rho size is 2*(STDIM-1)*STDIM*VOL_DEF
-			anisotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho + rho_index, &smeared_link, &abs_detJ);
+         long rho_index = 2*(STDIM-1)*((defect_rect->d_vol_rect)*dir + s); // rho size is 2*(STDIM-1)*STDIM*VOL_DEF
+			anisotropic_stout_smearing_withjacobi(GC, geo, r, dir, rho + rho_index, &smeared_link, &abs_detJ);
 			equal(&(GC->lattice[r][dir]), &smeared_link);
 			dlogJ += log(abs_detJ);
 		}
@@ -1937,8 +1937,8 @@ void defect_stout_smearing_update(Gauge_Conf * GC,
 			long r = defect_rect->rect_sites[s]; // r = site index on lattice
 			GAUGE_GROUP smeared_link;
 			double abs_detJ;
-         int rho_index = 2*(STDIM-1)*((defect_rect->d_vol_rect)*dir + s) // rho size is 2*(STDIM-1)*STDIM*VOL_DEF
-			anisotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho + rho_index, &smeared_link, &abs_detJ);
+         long rho_index = 2*(STDIM-1)*((defect_rect->d_vol_rect)*dir + s); // rho size is 2*(STDIM-1)*STDIM*VOL_DEF
+			anisotropic_stout_smearing_withjacobi(GC, geo, r, dir, rho + rho_index, &smeared_link, &abs_detJ);
 			equal(&(GC->lattice[r][dir]), &smeared_link);
 			dlogJ += log(abs_detJ);
 		} 
