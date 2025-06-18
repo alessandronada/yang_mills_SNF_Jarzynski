@@ -873,7 +873,7 @@ void init_derived_constants(GParam *param)
 
   
 
-void init_protocol(GParam const * const param)
+void init_protocol(GParam const * const param, double start, double end)
 {
   FILE *input_protocol;
   double temp_d;
@@ -913,7 +913,7 @@ void init_protocol(GParam const * const param)
   else
   {
     for(i=0;i<param->d_J_steps;i++)
-      param->d_J_protocol[i]=(double)((param->d_J_beta_target - param->d_beta) * ((double)(i+1)) / param->d_J_steps + param->d_beta);
+      param->d_J_protocol[i]=(double)((end - start) * ((double)(i+1)) / param->d_J_steps + start);
   }
 }
 
@@ -951,6 +951,46 @@ void init_smearing_parameter(GParam const * const param)
 		  param->d_SNF_rho[i]=temp_d;
 
     }
+  }
+}
+
+void init_defect_smearing_parameter(GParam const * const param, int rect_vol)
+{
+  FILE *input_smearingrho;
+  double temp_d;
+  int i, mu, s, p;
+  int err;
+
+  err=posix_memalign( (void **) &(param->d_SNF_rho), (size_t) DOUBLE_ALIGN, (size_t) param->d_J_steps * 2 * (STDIM-1) * STDIM * rect_vol * sizeof(double));
+	if(err!=0)
+	{
+	  fprintf(stderr, "Problems in allocating protocol parameters! (%s, %d)\n", __FILE__, __LINE__);
+	  exit(EXIT_FAILURE);
+	}			
+
+  input_smearingrho=fopen(param->d_smearingrho_file, "r"); // open the input smearing rho file
+
+  if(input_smearingrho==NULL)
+  {
+    fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_smearingrho_file, __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  else
+  {
+    for(i=0;i<param->d_J_steps;i++)
+      for(mu=0;mu<STDIM;mu++)
+        for(s=0;s<rect_vol;s++)
+          for(p=0;p<2*(STDIM-1);p++)
+          {
+            int rho_index = 2*(STDIM-1)*rect_vol*STDIM*i + 2*(STDIM-1)*rect_vol*mu + 2*(STDIM-1)*s + p;
+            err=fscanf(input_smearingrho, "%lf", &temp_d);
+	          if(err!=1)
+            { 
+              fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_smearingrho_file, __FILE__, __LINE__);
+              exit(EXIT_FAILURE);
+            }
+		        param->d_SNF_rho[rho_index]=temp_d;
+          }
   }
 }
 

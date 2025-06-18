@@ -1752,7 +1752,7 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 	}
 
 	long r;
-	int j, dir;
+	int dir;
 	double dlogJ = 0.0;
 
 	for (dir = 0; dir < STDIM; dir++)
@@ -1796,7 +1796,7 @@ void isotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
    GAUGE_GROUP staple, *link;
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson(GC, geo, param, st_position, dir, smeared_link); // using smeared_link as buffer 
-   equal_dag(&staple, smeared_link); // note that Caludio's staple are oppositly oriented => dagger them
+   equal_dag(&staple, smeared_link); // note that Claudio's staple are oppositely oriented => dagger them
 
    times_equal_real(&staple, rho); // divide by (2 * D - 2) ?
 
@@ -1864,7 +1864,7 @@ void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    TensProd exp_deriv;
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson(GC, geo, param, st_position, dir, &link_buff); // using smeared_link as buffer 
-   equal_dag(&staple, &link_buff); // note that Claudio's staple are oppositly oriented => dagger them
+   equal_dag(&staple, &link_buff); // note that Claudio's staple are oppositely oriented => dagger them
 
    times_equal_real(&staple, rho);
 
@@ -1881,17 +1881,83 @@ void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    equal(smeared_link, &link_buff); // no problems if smeared link in GC
 }
 
+// perform a stout smearing step only on links around the defect
+void defect_stout_smearing_update(Gauge_Conf * GC,
+	Geometry const * const geo,
+	GParam const * const param,
+   Rectangle const * const defect_rect,
+	double * logJ,
+	double * rho)
+{
+	for (int i = 0; i < STDIM; i++)
+	{
+		if (param->d_size[i] == 1)
+		{
+			fprintf(stderr, "Error: this functon can not be used in the completely reduced case (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+   long s, num_even, num_odd;
+	int j, dir;
+	double dlogJ = 0.0;
+		
+	/* Check if there's at least one even dimension of the rectangle, i.e. check if d_vol_rect is even.
+	   If there's at least one even dimension: d_vol_rect/2 even sites and d_vol_rect/2 odd sites.
+		 Otherwise: (d_vol_rect+1)/2 even sites and (d_vol_rect-1)/2 odd sites. */
+
+	long is_even = ( defect_rect->d_vol_rect ) % 2;
+
+	num_even = ( defect_rect->d_vol_rect + is_even ) / 2; // number of even sites
+	num_odd  = ( defect_rect->d_vol_rect - is_even ) / 2; // number of odd sites
+
+	for (dir = 0; dir < STDIM; dir++)
+	{
+      #ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction( + : dlogJ )
+		#endif 
+		for(s=0; s<num_even; s++)
+		{
+			// s = site index on rectangle
+			long r = defect_rect->rect_sites[s]; // r = site index on lattice
+			GAUGE_GROUP smeared_link;
+			double abs_detJ;
+         int rho_index = 2*(STDIM-1)*((defect_rect->d_vol_rect)*dir + s) // rho size is 2*(STDIM-1)*STDIM*VOL_DEF
+			anisotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho + rho_index, &smeared_link, &abs_detJ);
+			equal(&(GC->lattice[r][dir]), &smeared_link);
+			dlogJ += log(abs_detJ);
+		}
+
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction( + : dlogJ )
+		#endif 
+		for(s=num_even; s<num_odd+num_even; s++)
+		{
+			// s = site index on rectangle
+			long r = defect_rect->rect_sites[s]; // r = site index on lattice
+			GAUGE_GROUP smeared_link;
+			double abs_detJ;
+         int rho_index = 2*(STDIM-1)*((defect_rect->d_vol_rect)*dir + s) // rho size is 2*(STDIM-1)*STDIM*VOL_DEF
+			anisotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho + rho_index, &smeared_link, &abs_detJ);
+			equal(&(GC->lattice[r][dir]), &smeared_link);
+			dlogJ += log(abs_detJ);
+		} 
+	}
+
+	*logJ = 2.0 * dlogJ;
+}
+
 void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
                                            Geometry const * const geo,
                                            long st_position,
                                            int dir, // mu in https://arxiv.org/pdf/hep-lat/0311018
-                                           double const rho[STDIM], // rho_nu ibidem
+                                           double const* rho, // rho_nu ibidem
                                            GAUGE_GROUP* smeared_link)
 {
-   // M[2*(STDIM-1)+1]
    GAUGE_GROUP staple, aux_staple[2*(STDIM-1)+1], *link;
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson_nosum(GC, geo, st_position, dir, aux_staple);
+
    for (int i = 0; i < 2*(STDIM-1)+1; i++) { // daggering all the staples
       equal(&staple, &(aux_staple[i]));
       equal_dag(&(aux_staple[i]), &staple);
@@ -1902,11 +1968,13 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
    {
       if (nu == dir) continue;
 
-      times_equal_real(&aux_staple[nu_staple], rho[nu]);
+      // staple in direction (dir,+nu)
+      times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
       plus_equal(&staple, &aux_staple[nu_staple]); 
       nu_staple++;
 
-      times_equal_real(&aux_staple[nu_staple], rho[nu]);
+      // staple in direction (dir,-nu)
+      times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
       plus_equal(&staple, &aux_staple[nu_staple]); 
       nu_staple++;
    }
@@ -1924,7 +1992,7 @@ void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
                                            Geometry const * const geo,
                                            long st_position,
                                            int dir, // mu in https://arxiv.org/pdf/hep-lat/0311018
-                                           double const rho[STDIM], // rho_nu ibidem
+                                           double const* rho, // rho_nu ibidem
                                            GAUGE_GROUP* smeared_link,
                                            double* abs_detJ)
 {
@@ -1932,6 +2000,7 @@ void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    const GAUGE_GROUP* link;
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson_nosum(GC, geo, st_position, dir, aux_staple);
+
    for (int i = 0; i < 2*(STDIM-1)+1; i++) { // daggering all the staples
       equal(&staple, &(aux_staple[i]));
       equal_dag(&(aux_staple[i]), &staple);
@@ -1942,11 +2011,13 @@ void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    {
       if (nu == dir) continue;
 
-      times_equal_real(&aux_staple[nu_staple], rho[nu]);
+      // staple in direction (dir,+nu)
+      times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
       plus_equal(&staple, &aux_staple[nu_staple]); 
       nu_staple++;
 
-      times_equal_real(&aux_staple[nu_staple], rho[nu]);
+      // staple in direction (dir,-nu)
+      times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
       plus_equal(&staple, &aux_staple[nu_staple]); 
       nu_staple++;
    }

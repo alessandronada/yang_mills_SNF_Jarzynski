@@ -420,6 +420,12 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 	GParam const * const param,
 	double * logJ,
 	double rho);
+void defect_stout_smearing_update(Gauge_Conf * GC,
+	Geometry const * const geo,
+	GParam const * const param,
+  Rectangle const * const defect_rect,
+	double * logJ,
+	double * rho);
 void cooling(Gauge_Conf *GC,
              Geometry const * const geo,
              GParam const * const param,

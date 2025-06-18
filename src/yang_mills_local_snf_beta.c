@@ -43,7 +43,7 @@ void real_main(char *in_file)
     initrand(param.d_randseed);
 
     // initialize protocol parameters
-    init_protocol(&param);
+    init_protocol(&param, param.d_beta, param.d_J_beta_target);
     // initialize smearing parameters
     init_smearing_parameter(&param);
 
