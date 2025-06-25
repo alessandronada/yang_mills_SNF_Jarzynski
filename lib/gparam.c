@@ -968,7 +968,7 @@ void init_defect_smearing_parameter(GParam const * const param, long rect_vol)
 	  exit(EXIT_FAILURE);
 	}			
 
-  input_smearingrho=fopen(param->d_smearingrho_file, "r"); // open the input smearing rho file
+  input_smearingrho=fopen(param->d_smearingrho_file, "rb"); // open the input smearing rho binary file
 
   if(input_smearingrho==NULL)
   {
@@ -977,18 +977,23 @@ void init_defect_smearing_parameter(GParam const * const param, long rect_vol)
   }
   else
   {
+    int endianness = endian();
     for(i=0;i<param->d_J_steps;i++)
       for(mu=0;mu<STDIM;mu++)
         for(s=0;s<rect_vol;s++)
           for(p=0;p<2*(STDIM-1);p++)
           {
             long rho_index = 2 * (STDIM-1) * rect_vol * STDIM * i + 2 * (STDIM-1) * rect_vol * mu + 2 * (STDIM-1) * s + p;
-            err=fscanf(input_smearingrho, "%lf", &temp_d);
+            err=fread(&temp_d, sizeof(double), 1, input_smearingrho);
 	          if(err!=1)
             { 
               fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_smearingrho_file, __FILE__, __LINE__);
               exit(EXIT_FAILURE);
             }
+
+            if (endianness == 0)
+              SwapBytesDouble(&temp_d);
+
 		        param->d_SNF_rho[rho_index]=temp_d;
           }
   }
