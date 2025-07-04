@@ -64,7 +64,7 @@ void real_main(char *in_file)
     // initialize rectangles for hierarchical update
     init_rect_hierarc(&most_update, &clover_rectangle, &param);
     // initialize rectangle for defect smearing
-    init_rect(&defect_rect, 0, &param);
+    init_rect(&defect_rect, 1, &param);
 
     // initialize smearing parameters
     init_defect_smearing_parameter(&param, defect_rect.d_vol_rect);

@@ -959,7 +959,7 @@ void init_defect_smearing_parameter(GParam const * const param, long rect_vol)
   FILE *input_smearingrho;
   double temp_d;
   int i, mu, s, p;
-  int err;
+  long err;
 
   err=posix_memalign( (void **) &(param->d_SNF_rho), (size_t) DOUBLE_ALIGN, (size_t) param->d_J_steps * 2 * (STDIM-1) * STDIM * rect_vol * sizeof(double));
 	if(err!=0)
@@ -977,7 +977,7 @@ void init_defect_smearing_parameter(GParam const * const param, long rect_vol)
   }
   else
   {
-    int endianness = endian();
+    //int endianness = endian();
     for(i=0;i<param->d_J_steps;i++)
       for(mu=0;mu<STDIM;mu++)
         for(s=0;s<rect_vol;s++)
@@ -991,8 +991,8 @@ void init_defect_smearing_parameter(GParam const * const param, long rect_vol)
               exit(EXIT_FAILURE);
             }
 
-            if (endianness == 0)
-              SwapBytesDouble(&temp_d);
+            //if (endianness == 0)
+            //  SwapBytesDouble(&temp_d);
 
 		        param->d_SNF_rho[rho_index]=temp_d;
           }

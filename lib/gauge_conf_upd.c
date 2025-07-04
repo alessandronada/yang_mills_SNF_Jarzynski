@@ -1964,6 +1964,7 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
    }
 
    int nu_staple = 1;
+   zero(&staple);
    for (int nu = 0; nu < STDIM; nu++)
    {
       if (nu == dir) continue;
@@ -2001,16 +2002,18 @@ void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson_nosum(GC, geo, st_position, dir, aux_staple);
 
+
    for (int i = 0; i < 2*(STDIM-1)+1; i++) { // daggering all the staples
       equal(&staple, &(aux_staple[i]));
       equal_dag(&(aux_staple[i]), &staple);
    }
 
    int nu_staple = 1;
+   zero(&staple);
    for (int nu = 0; nu < STDIM; nu++)
    {
       if (nu == dir) continue;
-
+      
       // staple in direction (dir,+nu)
       times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
       plus_equal(&staple, &aux_staple[nu_staple]); 
