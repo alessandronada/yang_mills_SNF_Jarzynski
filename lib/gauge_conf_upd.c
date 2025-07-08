@@ -95,6 +95,79 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
      }
    }
 
+// compute the components of the staple in position r, direction i and save it in M[2*(STDIM-1)+1]
+// position 0 of M is not used. It is used in simulations at imaginary theta values
+void calcstaples_wilson_nosum(Gauge_Conf const * const GC,
+                              Geometry const * const geo,
+                              long r,
+                              int i,
+                              GAUGE_GROUP *M)
+{
+   int j, l, count;
+   long k;
+   GAUGE_GROUP link1, link2, link3, link12, stap;
+
+   count=0;
+   zero(&M[count]); // M=0
+
+   for(l=i+1; l< i + STDIM; l++)
+   {
+      j = (l % STDIM);
+
+      count++;
+      zero(&M[count]); // M=0
+
+//
+//       i ^
+//         |   (1)
+//         +----->-----+
+//         |           |
+//                     |
+//         |           V (2)
+//                     |
+//         |           |
+//         +-----<-----+-->   j
+//       r     (3)
+//
+
+      equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
+      equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
+      equal(&link3, &(GC->lattice[r][j]));               // link3 = (3)
+
+      times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
+      times_dag2(&stap, &link12, &link3);   // stap=link12*stap^{dag}
+
+      equal(&(M[count]), &stap);
+
+//
+//       i ^
+//         |   (1)
+//         |----<------+
+//         |           |
+//         |
+//     (2) V           |
+//         |
+//         |           |
+//         +------>----+--->j
+//        k     (3)    r
+//
+
+      count++;
+      zero(&M[count]); // M=0
+
+      k=nnm(geo, r, j);
+
+      equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));  // link1 = (1)
+      equal(&link2, &(GC->lattice[k][i]));               // link2 = (2)
+      equal(&link3, &(GC->lattice[k][j]));               // link3 = (3)
+
+      times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
+      times(&stap, &link12, &link3);        // stap=link12*link3
+
+      equal(&(M[count]), &stap);
+   }
+}
+
 // compute the staple for the trace deformed theory:
 // in practice a Polyakov loop without a link
 void calcstaples_tracedef(Gauge_Conf const * const GC,
@@ -1662,78 +1735,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
      }
   }
 
-// compute the components of the staple in position r, direction i and save it in M[2*(STDIM-1)+1]
-// position 0 of M is not used. It is used in simulations at imaginary theta values
-void calcstaples_wilson_nosum(Gauge_Conf const * const GC,
-                              Geometry const * const geo,
-                              long r,
-                              int i,
-                              GAUGE_GROUP *M)
-{
-   int j, l, count;
-   long k;
-   GAUGE_GROUP link1, link2, link3, link12, stap;
-
-   count=0;
-   zero(&M[count]); // M=0
-
-   for(l=i+1; l< i + STDIM; l++)
-   {
-      j = (l % STDIM);
-
-      count++;
-      zero(&M[count]); // M=0
-
-//
-//       i ^
-//         |   (1)
-//         +----->-----+
-//         |           |
-//                     |
-//         |           V (2)
-//                     |
-//         |           |
-//         +-----<-----+-->   j
-//       r     (3)
-//
-
-      equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
-      equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
-      equal(&link3, &(GC->lattice[r][j]));               // link3 = (3)
-
-      times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
-      times_dag2(&stap, &link12, &link3);   // stap=link12*stap^{dag}
-
-      equal(&(M[count]), &stap);
-
-//
-//       i ^
-//         |   (1)
-//         |----<------+
-//         |           |
-//         |
-//     (2) V           |
-//         |
-//         |           |
-//         +------>----+--->j
-//        k     (3)    r
-//
-
-      count++;
-      zero(&M[count]); // M=0
-
-      k=nnm(geo, r, j);
-
-      equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));  // link1 = (1)
-      equal(&link2, &(GC->lattice[k][i]));               // link2 = (2)
-      equal(&link3, &(GC->lattice[k][j]));               // link3 = (3)
-
-      times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
-      times(&stap, &link12, &link3);        // stap=link12*link3
-
-      equal(&(M[count]), &stap);
-   }
-}
 
 // perform a stout smearing step
 void isotropic_stout_smearing_update(Gauge_Conf * GC,
@@ -1859,7 +1860,7 @@ void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    fprintf(stderr, "Jacobiano implementato solo per SU(3), %s %d", __FILE__, __LINE__);
    exit(EXIT_FAILURE);
 #endif
-   GAUGE_GROUP link_buff, staple;
+   GAUGE_GROUP link_buff, expQ, staple;
    const GAUGE_GROUP* link;
    TensProd exp_deriv;
    link = &(GC->lattice[st_position][dir]);
@@ -1868,7 +1869,7 @@ void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
 
    times_equal_real(&staple, rho);
 
-   GAUGE_GROUP expQ; times_dag2(&expQ, &staple, link); // this is Omega = C U^dagger
+   times_dag2(&expQ, &staple, link); // this is Omega = C U^dagger
    taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ) = exp(ta(Omega))
 
    equal(&link_buff, &expQ); 
@@ -1958,26 +1959,18 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson_nosum(GC, geo, st_position, dir, aux_staple);
 
-   for (int i = 0; i < 2*(STDIM-1)+1; i++) { // daggering all the staples
+   // daggering all the staples
+   for (int i = 1; i < 2*(STDIM-1)+1; i++) { 
       equal(&staple, &(aux_staple[i]));
       equal_dag(&(aux_staple[i]), &staple);
    }
 
-   int nu_staple = 1;
+   // sum and multiplication by rho
    zero(&staple);
-   for (int nu = 0; nu < STDIM; nu++)
+   for (int nu_staple = 1; nu_staple < 2*(STDIM-1)+1; nu_staple++)
    {
-      if (nu == dir) continue;
-
-      // staple in direction (dir,+nu)
       times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
       plus_equal(&staple, &aux_staple[nu_staple]); 
-      nu_staple++;
-
-      // staple in direction (dir,-nu)
-      times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
-      plus_equal(&staple, &aux_staple[nu_staple]); 
-      nu_staple++;
    }
    
    times_equal_dag(&staple, link); //Omega
@@ -1997,47 +1990,37 @@ void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
                                            GAUGE_GROUP* smeared_link,
                                            double* abs_detJ)
 {
-   GAUGE_GROUP staple, aux_staple[2*(STDIM-1)+1];
+   GAUGE_GROUP link_buff, expQ, staple, aux_staple[2*(STDIM-1)+1];
    const GAUGE_GROUP* link;
+   TensProd exp_deriv;
    link = &(GC->lattice[st_position][dir]);
    calcstaples_wilson_nosum(GC, geo, st_position, dir, aux_staple);
 
-
-   for (int i = 0; i < 2*(STDIM-1)+1; i++) { // daggering all the staples
+   // daggering all the staples
+   for (int i = 1; i < 2*(STDIM-1)+1; i++) { 
       equal(&staple, &(aux_staple[i]));
       equal_dag(&(aux_staple[i]), &staple);
    }
 
-   int nu_staple = 1;
+   // sum and multiplication by rho
    zero(&staple);
-   for (int nu = 0; nu < STDIM; nu++)
+   for (int nu_staple = 1; nu_staple < 2*(STDIM-1)+1; nu_staple++)
    {
-      if (nu == dir) continue;
-      
-      // staple in direction (dir,+nu)
       times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
       plus_equal(&staple, &aux_staple[nu_staple]); 
-      nu_staple++;
-
-      // staple in direction (dir,-nu)
-      times_equal_real(&aux_staple[nu_staple], rho[nu_staple-1]);
-      plus_equal(&staple, &aux_staple[nu_staple]); 
-      nu_staple++;
    }
    
-   GAUGE_GROUP expQ; times_dag2(&expQ, &staple, link); // this is Omega
-   TensProd exp_deriv;
-   taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ+)
+   times_dag2(&expQ, &staple, link); // this is Omega = C U^dagger
+   taexp_Su3_withderiv(&expQ, &exp_deriv); // this is exp(iQ) = exp(ta(Omega))
 
-   GAUGE_GROUP link_buffer;
-   equal(&link_buffer, &expQ);
-   times_equal(&link_buffer, link); // link = exp(i Q(Omega)) * link
-   unitarize(&link_buffer);
+   equal(&link_buff, &expQ);
+   times_equal(&link_buff, link); // link = exp(i Q(Omega)) * link
+   unitarize(&link_buff);
 
    complex double detJ = stout_smearing_chainrules(&exp_deriv, &expQ, &staple, link);
 
    *abs_detJ = cabs(detJ);
-   equal(smeared_link, &link_buffer); // no problems if smeared link in GC
+   equal(smeared_link, &link_buff); // no problems if smeared link in GC
 }
 
 // n step of ape smearing with parameter alpha
