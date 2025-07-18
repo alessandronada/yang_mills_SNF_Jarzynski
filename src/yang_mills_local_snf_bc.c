@@ -99,7 +99,7 @@ void real_main(char *in_file)
         for (step = 0; step < param.d_J_steps; step++)
         {
             //compute S_C(i) (U_i)
-            act0 = compute_defect_action(&GC, &geo, &param);
+            act0 = compute_defect_action_all(&GC, &geo, &param);
             
             //stout smearing step: U_i -> g_i(U_i)
             defect_stout_smearing_update(&GC, &geo, &param, &defect_rect, &logJ, param.d_SNF_rho + 2 * (STDIM-1) * defect_rect.d_vol_rect * STDIM * step);
@@ -108,7 +108,7 @@ void real_main(char *in_file)
             set_bound_cond(&GC, &param, param.d_J_protocol[step]);
             
             //compute S_C(i+1) (g_i(U_i))
-            act1 = compute_defect_action(&GC, &geo, &param);
+            act1 = compute_defect_action_all(&GC, &geo, &param);
             
             //compute work step
             W += act1 - act0 - logJ;

@@ -187,6 +187,35 @@ double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const
 	return act;
 }
 
+double compute_defect_action_all(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param)
+{
+	long r;
+    double re_tr_plaq, K, pl=0.0;
+
+    #ifdef OPENMP_MODE
+    #pragma omp parallel for num_threads(NTHREADS) private(r) reduction(+ : pl)
+    #endif
+    for(r=0; r<(param->d_volume); r++)
+	{
+    	int i, j;
+     
+    	for(i=0; i<STDIM; i++)
+        {
+        	for(j=i+1; j<STDIM; j++)
+            {
+				// plaquettes
+				re_tr_plaq = plaquettep(GC, geo, param, r, i, j);// (Re Tr plaq(r,i,j) )/N_c
+				// boundary conditions
+				K = (GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]);
+
+				pl += K * re_tr_plaq;
+            }
+        }
+	}
+
+	return - param->d_beta * pl;
+}
+
 // swaps are serial, evaluation of swap probability is parallelized (use this version of 'swap' if gcc_version < 6.0 or icc_version < 14.0)
 /*
 void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
