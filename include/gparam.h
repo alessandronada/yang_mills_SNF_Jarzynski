@@ -16,7 +16,7 @@ typedef struct GParam {
   double d_h[NCOLOR]; // parameters for the trace deformation
   double d_theta;
 	
-  // Jarzynski and parallel tempering parameters
+  // OBC defect parameters
   int d_defect_dir;				// defect boundary
   int d_L_defect[STDIM - 1];	// defect sizes
 
@@ -25,16 +25,16 @@ typedef struct GParam {
   double* d_pt_bound_cond_coeff; // boundary conditions coefficients
 
   // Jarzynski parameters
-  int d_J_evolutions; // number of out-of-equilibrium evolutions
-  int d_J_between;	// relax steps between evolutions
-  int d_J_steps;	// steps in each evolution
-  int d_J_dmeas;	// steps between each measurement during evolution
-  double d_J_beta_target;     // target beta, only for evolutions in beta
-  int d_J_protocol_type;    // 0 for linear protocol, otherwise load from file
-  double* d_J_protocol;     // array for protocol parameters
+  int d_flow_evolutions; // number of out-of-equilibrium evolutions
+  int d_flow_between;	// relax steps between evolutions
+  int d_flow_steps;	// steps in each evolution
+  int d_flow_dmeas;	// steps between each measurement during evolution
+  double d_flow_beta_target;     // target beta, only for evolutions in beta
+  int d_flow_protocol_type;    // 0 for linear protocol, otherwise load from file
+  double* d_flow_protocol;     // array for protocol parameters
   double* d_SNF_rho;        // array for smearing parameters
 	
-	// hierarchical update (parallel tempering)
+	// hierarchical update
 	int d_N_hierarc_levels; // number of hierarchical levels
 	int *d_L_rect;          // d_L_rect is a vector of length d_N_hierarc_levels
 	                        // d_L_rect[i] is the extension of the rectangle at the i-th hierarchical level
@@ -118,9 +118,10 @@ void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tprof_f, 
 void init_work_file(FILE **workfilep, GParam const * const param);
 void free_hierarc_params(GParam *param);
 void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end);
-void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
-void print_parameters_local_jarzynski(GParam const * const param, time_t time_start, time_t time_end);
-void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end);
+//void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_local_flow_bc(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_local_flow_beta(GParam const * const param, time_t time_start, time_t time_end);
+//void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_t0(GParam * param, time_t time_start, time_t time_end);

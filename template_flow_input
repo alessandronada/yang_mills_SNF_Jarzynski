@@ -1,17 +1,25 @@
 size 8 8 8 8   # Nt Nx Ny Nz
 
-# multicanonic parameters (ONLY MULTICANONIC RUNS)
-grid_step             0.05
-grid_max              5.0
-topo_potential_file   ToPotential
+# OBC defect parameters (ONLY FLOWS IN BC)
+defect_dir    0                # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z
+defect_size   2 2 2            # defect sizes along dirs orthogonal to <defect_dir>, ordered from 0 to 3 (skipping the <defect_dir> direction)
+
+# flow (Jarzynski or SNF) evolutions parameters
+num_flow_ev      10         # number of out-of-equilibrium evolutions
+num_flow_between   1        # number of steps between start of evolutions
+num_flow_steps   10         # length of evolution
+num_flow_dmeas   10         # measures obs every ... steps DURING evolutions (ONLY FLOWS IN BETA)
+flow_beta_target     6.2    # target beta (ONLY FLOWS IN BETA)
+protocol_type   0          # 0->linear protocol, otherwise load from protocol_file
+
+# hierarchical update parameters (ONLY FLOWS IN BC): num of hierarc levels ___ extension of rectangles ___ num of sweeps per rectangle
+hierarc_upd 0
 
 # Simulation parameters
 beta       6.0     # starting beta for flows in beta
 theta      0.0
-sample     10
 thermal    0
 overrelax  4
-measevery  1
 randseed   42      # (0=time)
 
 start                    0     # 0=ordered  1=random  2=from saved configuration
@@ -33,6 +41,3 @@ smearingrho_file         rho.dat              # rho smearing parameters for SNFs
 chiprime_data_file       chi_prime_cool.dat   # chi_prime cool measures are written here only if chi_prime_meas==1
 topcharge_tprof_file     topo_tprof_cool.dat  # topcharge_tprof cool measures are written here only if topcharge_tprof_meas==1
 log_file                 log.dat
-swap_acc_file            swap_acc.dat
-swap_track_file          swap_track.dat
-multicanonic_acc_file    multicanonic_acc.dat
