@@ -1,194 +1,194 @@
 #ifndef YM_LOCAL_PT_C
 #define YM_LOCAL_PT_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 #ifdef OPENMP_MODE
-  #include<omp.h>
+#include <omp.h>
 #endif
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
+#include "../include/function_pointers.h"
+#include "../include/gauge_conf.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
 
 void real_main(char *in_file)
 {
-    Gauge_Conf GC, GCstart;
-    Geometry geo;
-    GParam param;
-    double W = 0.0, beta0 = 0.0, act0 = 0.0, act1 = 0.0, plaqs, plaqt, logJ;
+  Gauge_Conf GC, GCstart;
+  Geometry geo;
+  GParam param;
+  double W = 0.0, beta0 = 0.0, act0 = 0.0, act1 = 0.0, plaqs, plaqt, logJ;
 
-    char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-    int count, rel, step;
-    FILE *datafilep, *chiprimefilep,  *topchar_tprof_filep, *workfilep;
-    time_t time1, time2;
+  char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+  int count, rel, step;
+  FILE *datafilep, *chiprimefilep, *topchar_tprof_filep, *workfilep;
+  time_t time1, time2;
 
-    // to disable nested parallelism
-    #ifdef OPENMP_MODE
-    // omp_set_nested(0); // deprecated
-	    omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
-    #endif
+// to disable nested parallelism
+#ifdef OPENMP_MODE
+  // omp_set_nested(0); // deprecated
+  omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
+#endif
 
-    // read input file
-    readinput(in_file, &param);
+  // read input file
+  readinput(in_file, &param);
 
-    // initialize random generator
-    initrand(param.d_randseed);
+  // initialize random generator
+  initrand(param.d_randseed);
 
-    // initialize protocol parameters
-    init_protocol(&param, param.d_beta, param.d_flow_beta_target);
-    // initialize smearing parameters
-    init_smearing_parameter(&param);
+  // initialize protocol parameters
+  init_protocol(&param, param.d_beta, param.d_flow_beta_target);
+  // initialize smearing parameters
+  init_smearing_parameter(&param);
 
-    // open data_file
-    init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
-    init_work_file(&workfilep, &param);
+  // open data_file
+  init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
+  init_work_file(&workfilep, &param);
 
-    // initialize geometry
-    init_indexing_lexeo();
-    init_geometry(&geo, &param);
-    
+  // initialize geometry
+  init_indexing_lexeo();
+  init_geometry(&geo, &param);
 
-    // initialize gauge configuration
-    init_gauge_conf(&GC, &param);
-    // copy to save initial configuration on prior
-    init_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
+  // initialize gauge configuration
+  init_gauge_conf(&GC, &param);
+  // copy to save initial configuration on prior
+  init_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
 
-    // Monte Carlo begin
-    time(&time1);
-    beta0 = param.d_beta;
+  // Monte Carlo begin
+  time(&time1);
+  beta0 = param.d_beta;
 
-    // thermalization
-    for (count = 0; count < param.d_thermal; count++)
+  // thermalization
+  for (count = 0; count < param.d_thermal; count++)
+  {
+    update(&GC, &geo, &param);
+  }
+
+  // loop on evolutions
+  for (count = 0; count < param.d_flow_evolutions; count++)
+  {
+    W = 0.0;
+    param.d_beta = beta0;
+
+    // updates between the start of each evolution
+    for (rel = 0; rel < param.d_flow_between; rel++)
+      update(&GC, &geo, &param);
+
+    // increase the index of evolutions
+    GC.evolution_index++;
+
+    // store the starting configuration of the evolution
+    copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
+
+    // non-equilibrium evolution
+    for (step = 0; step < param.d_flow_steps; step++)
     {
-        update(&GC, &geo, &param);
-    }
+      // compute S_beta(i) (U_i)
+      plaquette(&GC, &geo, &param, &plaqs, &plaqt);
+      act0 = 1 - 0.5 * (plaqs + plaqt);
+      act0 *= param.d_beta * 6 / param.d_inv_vol;
 
-    // loop on evolutions
-    for (count=0; count < param.d_flow_evolutions; count++)
-    {
-      W = 0.0;
-      param.d_beta = beta0;
+      // stout smearing step: U_i -> g_i(U_i)
+      isotropic_stout_smearing_update(&GC, &geo, &param, &logJ, (param.d_SNF_rho)[step]);
 
-	    // updates between the start of each evolution
-	    for (rel = 0; rel < param.d_flow_between; rel++)
-        update(&GC, &geo, &param);
+      // change beta: S_beta(i) -> S_beta(i+1)
+      param.d_beta = param.d_flow_protocol[step];
 
-      // increase the index of evolutions
-      GC.evolution_index++;
+      // compute S_beta(i+1) (g_i(U_i))
+      plaquette(&GC, &geo, &param, &plaqs, &plaqt);
+      act1 = 1 - 0.5 * (plaqs + plaqt);
+      act1 *= param.d_beta * 6 / param.d_inv_vol;
 
-	    // store the starting configuration of the evolution
-	    copy_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
+      // compute work step
+      W += act1 - act0 - logJ;
 
-	    // non-equilibrium evolution
-	    for (step = 0; step < param.d_flow_steps; step++)
-	    {
-			  //compute S_beta(i) (U_i)
-			  plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-			  act0 = 1 - 0.5 * (plaqs + plaqt);
-			  act0 *= param.d_beta * 6 / param.d_inv_vol;
+      // MC update: g_i(U_i) -> U_(i+1)
+      update(&GC, &geo, &param);
 
-			  //stout smearing step: U_i -> g_i(U_i)
-			  isotropic_stout_smearing_update(&GC, &geo, &param, &logJ, (param.d_SNF_rho)[step]);
-
-        //change beta: S_beta(i) -> S_beta(i+1)
-        param.d_beta = param.d_flow_protocol[step];
-
-			  //compute S_beta(i+1) (g_i(U_i))
-        plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-        act1 = 1 - 0.5 * (plaqs + plaqt);
-        act1 *= param.d_beta * 6 / param.d_inv_vol;
-
-			  //compute work step
-	      W += act1 - act0 - logJ;
-	    
-	      //MC update: g_i(U_i) -> U_(i+1)
-        update(&GC, &geo, &param);
-
-        if ((step + 1) % param.d_flow_dmeas == 0 && step != (param.d_flow_steps - 1))
-        {
-          perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
-          print_work(count, W, workfilep);
-        }
-	    }
-
-	    // perform measures only on PBC configuration
-	    perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
-	    print_work(count, W, workfilep);
-
-      // save initial (beta0) and final (target beta) configurations for offline analysis
-      if (param.d_saveconf_analysis_every != 0)
+      if ((step + 1) % param.d_flow_dmeas == 0 && step != (param.d_flow_steps - 1))
       {
-        if (count % param.d_saveconf_analysis_every == 0)
-        {
-          write_evolution_conf_on_file(&GCstart, &param, 0);
-          write_evolution_conf_on_file(&GC, &param, 1);
-        }
+        perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+        print_work(count, W, workfilep);
       }
-
-	    // recover the starting configuration of the evolution
-	    copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
-
-        // save initial beta0 configuration for backup
-        if (param.d_saveconf_back_every != 0)
-        {
-            if (count % param.d_saveconf_back_every == 0)
-            {
-                // simple
-                write_conf_on_file(&GC, &param);
-                // backup copy
-                write_conf_on_file_back(&GC, &param);
-            }
-        }
     }
 
-    time(&time2);
-    // Monte Carlo end
+    // perform measures only on PBC configuration
+    perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+    print_work(count, W, workfilep);
 
-    // close data file
-    fclose(datafilep);
-    fclose(workfilep);
-    if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
-    if (param.d_topcharge_tprof_meas==1) fclose(topchar_tprof_filep);
+    // save initial (beta0) and final (target beta) configurations for offline analysis
+    if (param.d_saveconf_analysis_every != 0)
+    {
+      if (count % param.d_saveconf_analysis_every == 0)
+      {
+        write_evolution_conf_on_file(&GCstart, &param, 0);
+        write_evolution_conf_on_file(&GC, &param, 1);
+      }
+    }
 
-    // save last beta0 configuration
+    // recover the starting configuration of the evolution
+    copy_gauge_conf_from_gauge_conf(&GC, &GCstart, &param);
+
+    // save initial beta0 configuration for backup
     if (param.d_saveconf_back_every != 0)
     {
+      if (count % param.d_saveconf_back_every == 0)
+      {
+        // simple
         write_conf_on_file(&GC, &param);
+        // backup copy
+        write_conf_on_file_back(&GC, &param);
+      }
     }
+  }
 
-    // print simulation details
-    param.d_beta = beta0;
-    print_parameters_local_flow_beta(&param, time1, time2);
+  time(&time2);
+  // Monte Carlo end
 
-    // free gauge configurations
-    free_gauge_conf(&GC, &param);
-    free_bound_cond(&GC, &param);
-    free_gauge_conf(&GCstart, &param);
-    free_bound_cond(&GCstart, &param);
+  // close data file
+  fclose(datafilep);
+  fclose(workfilep);
+  if (param.d_chi_prime_meas == 1)
+    fclose(chiprimefilep);
+  if (param.d_topcharge_tprof_meas == 1)
+    fclose(topchar_tprof_filep);
 
-    // free geometry
-    free_geometry(&geo, &param);
-		
-    // free update parameters
-    free_hierarc_params(&param);
+  // save last beta0 configuration
+  if (param.d_saveconf_back_every != 0)
+  {
+    write_conf_on_file(&GC, &param);
+  }
+
+  // print simulation details
+  param.d_beta = beta0;
+  print_parameters_local_flow_beta(&param, time1, time2);
+
+  // free gauge configurations
+  free_gauge_conf(&GC, &param);
+  free_bound_cond(&GC, &param);
+  free_gauge_conf(&GCstart, &param);
+  free_bound_cond(&GCstart, &param);
+
+  // free geometry
+  free_geometry(&geo, &param);
+
+  // free update parameters
+  free_hierarc_params(&param);
 }
-
 
 void print_template_input(void)
 {
   FILE *fp;
 
-  fp=fopen("template_input.example", "w");
+  fp = fopen("template_input.example", "w");
 
-  if(fp==NULL)
+  if (fp == NULL)
   {
     fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
     exit(EXIT_FAILURE);
@@ -243,74 +243,76 @@ void print_template_input(void)
   }
 }
 
+int main(int argc, char **argv)
+{
+  char in_file[STD_STRING_LENGTH];
 
-int main (int argc, char **argv)
+  if (argc != 2)
+  {
+    printf("\nNE-MCMC and SNF in beta implemented by Alessandro Nada (nada.alessandro@gmail.com)\n");
+    printf("\nStout smearing routines implemented along with Dario Panfalone and Lorenzo Verzichelli\n");
+    printf("Usage: %s input_file\n\n", argv[0]);
+
+    printf("\nForked from yang_mills_PTBC by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
+
+    printf("\nDetails about yang-mills package:\n");
+    printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+    printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
+
+    printf("Compilation details:\n");
+    printf("\tN_c (number of colors): %d\n", NCOLOR);
+    printf("\tST_dim (space-time dimensionality): %d\n", STDIM);
+    printf("\tNum_levels (number of levels): %d\n", NLEVELS);
+    printf("\n");
+    printf("\tINT_ALIGN: %s\n", QUOTEME(INT_ALIGN));
+    printf("\tDOUBLE_ALIGN: %s\n", QUOTEME(DOUBLE_ALIGN));
+
+#ifdef DEBUG
+    printf("\n\tDEBUG mode\n");
+#endif
+
+#ifdef OPENMP_MODE
+    printf("\n\tusing OpenMP with %d threads\n", NTHREADS);
+#endif
+
+#ifdef THETA_MODE
+    printf("\n\tusing imaginary theta\n");
+#endif
+
+    printf("\n");
+
+#ifdef __INTEL_COMPILER
+    printf("\tcompiled with icc\n");
+#elif defined(__clang__)
+    printf("\tcompiled with clang\n");
+#elif defined(__GNUC__)
+    printf("\tcompiled with gcc version: %d.%d.%d\n",
+           __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#endif
+
+    print_template_input();
+
+    return EXIT_SUCCESS;
+  }
+  else
+  {
+    if (strlen(argv[1]) >= STD_STRING_LENGTH)
     {
-    char in_file[STD_STRING_LENGTH];
-
-    if(argc != 2)
-      {
-			printf("\nSU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
-			printf("Usage: %s input_file\n\n", argv[0]);
-
-			printf("\nDetails about yang-mills package:\n");
-      printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
-      printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
-
-      printf("Compilation details:\n");
-      printf("\tN_c (number of colors): %d\n", NCOLOR);
-      printf("\tST_dim (space-time dimensionality): %d\n", STDIM);
-      printf("\tNum_levels (number of levels): %d\n", NLEVELS);
-      printf("\n");
-      printf("\tINT_ALIGN: %s\n", QUOTEME(INT_ALIGN));
-      printf("\tDOUBLE_ALIGN: %s\n", QUOTEME(DOUBLE_ALIGN));
-
-      #ifdef DEBUG
-        printf("\n\tDEBUG mode\n");
-      #endif
-
-      #ifdef OPENMP_MODE
-        printf("\n\tusing OpenMP with %d threads\n", NTHREADS);
-      #endif
-
-      #ifdef THETA_MODE
-        printf("\n\tusing imaginary theta\n");
-      #endif
-
-      printf("\n");
-
-      #ifdef __INTEL_COMPILER
-        printf("\tcompiled with icc\n");
-      #elif defined(__clang__)
-        printf("\tcompiled with clang\n");
-      #elif defined( __GNUC__ )
-        printf("\tcompiled with gcc version: %d.%d.%d\n",
-                __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-      #endif
-
-      print_template_input();
-
+      fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
       return EXIT_SUCCESS;
-      }
-    else
-      {
-      if(strlen(argv[1]) >= STD_STRING_LENGTH)
-        {
-        fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
-				return EXIT_SUCCESS;
-        }
-      else
-        {
-    		#if(STDIM==4 && NCOLOR>1)
-				strcpy(in_file, argv[1]);
-    		real_main(in_file);
-    		return EXIT_SUCCESS;
-    		#else
-    		fprintf(stderr, "Parallel tempering of volume defect not implemented for STDIM =/= 4 and N_color < 2.\n");
-    		return EXIT_SUCCESS;
-    		#endif
-        }
-      }
     }
+    else
+    {
+#if (STDIM == 4 && NCOLOR > 1)
+      strcpy(in_file, argv[1]);
+      real_main(in_file);
+      return EXIT_SUCCESS;
+#else
+      fprintf(stderr, "Parallel tempering of volume defect not implemented for STDIM =/= 4 and N_color < 2.\n");
+      return EXIT_SUCCESS;
+#endif
+    }
+  }
+}
 
 #endif

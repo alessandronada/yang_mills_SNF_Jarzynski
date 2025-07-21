@@ -251,8 +251,11 @@ int main(int argc, char **argv)
 
     if (argc != 2)
     {
-        printf("\nSU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
+        printf("\nNE-MCMC and SNF for BC implemented by Alessandro Nada (nada.alessandro@gmail.com)\n");
+        printf("\nStout smearing routines implemented along with Dario Panfalone and Lorenzo Verzichelli\n");
         printf("Usage: %s input_file\n\n", argv[0]);
+
+        printf("\nForked from yang_mills_PTBC by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
 
         printf("\nDetails about yang-mills package:\n");
         printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
