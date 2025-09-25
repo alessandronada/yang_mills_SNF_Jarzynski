@@ -26,7 +26,7 @@ void real_main(char *in_file)
   Rectangle *most_update, *clover_rectangle;
   double W = 0.0, act0 = 0.0, act1 = 0.0;
 
-  char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+  //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
   int count, rel, step;
   FILE *datafilep, *chiprimefilep, *topchar_tprof_filep, *workfilep;
   time_t time1, time2;

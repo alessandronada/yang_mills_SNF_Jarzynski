@@ -1892,7 +1892,7 @@ void defect_stout_smearing_update(Gauge_Conf * GC,
 	}
 
    long s, num_even, num_odd;
-	int j, dir;
+	int dir;
 	double dlogJ = 0.0;
 		
 	/* Check if there's at least one even dimension of the rectangle, i.e. check if d_vol_rect is even.

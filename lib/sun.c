@@ -381,6 +381,9 @@ void ta_SuN(SuN *A);
 // eponential of the traceless antihermitian part
 void taexp_SuN(SuN *A);
 
+// eponential of the traceless antihermitian part
+void taexp_Su3_withderiv(SuN * A, TensProd * deriv);
+
 // eponential of the traceless antihermitian part specifically for SU(3)
 void taexp_Su3(SuN *A);
 

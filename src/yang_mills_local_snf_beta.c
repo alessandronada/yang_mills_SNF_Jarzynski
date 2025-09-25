@@ -25,7 +25,7 @@ void real_main(char *in_file)
   GParam param;
   double W = 0.0, beta0 = 0.0, act0 = 0.0, act1 = 0.0, plaqs, plaqt, logJ;
 
-  char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+  //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
   int count, rel, step;
   FILE *datafilep, *chiprimefilep, *topchar_tprof_filep, *workfilep;
   time_t time1, time2;
