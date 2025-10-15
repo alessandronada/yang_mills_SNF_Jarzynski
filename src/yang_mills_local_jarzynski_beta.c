@@ -113,7 +113,7 @@ void real_main(char *in_file)
     // save initial (beta0) and final (target beta) configurations for offline analysis
     if (param.d_saveconf_analysis_every != 0)
     {
-      if (count % param.d_saveconf_analysis_every == 0)
+      if ((int)GC.evolution_index % param.d_saveconf_analysis_every == 0)
       {
         write_evolution_conf_on_file(&GCstart, &param, 0);
         write_evolution_conf_on_file(&GC, &param, 1);
