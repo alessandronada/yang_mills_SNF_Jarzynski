@@ -30,6 +30,7 @@ typedef struct GParam {
   int d_flow_steps;	// steps in each evolution
   int d_flow_dmeas;	// steps between each measurement during evolution
   double d_flow_beta_target;     // target beta, only for evolutions in beta
+  double d_flow_bc_beta0;       // starting beta on defect (for OBC is 0)
   int d_flow_protocol_type;    // 0 for linear protocol, otherwise load from file
   double* d_flow_protocol;     // array for protocol parameters
   double* d_SNF_rho;        // array for smearing parameters

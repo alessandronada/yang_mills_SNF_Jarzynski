@@ -10,6 +10,7 @@ num_flow_between   1        # number of steps between start of evolutions
 num_flow_steps   10         # length of evolution
 num_flow_dmeas   10         # measures obs every ... steps DURING evolutions (ONLY FLOWS IN BETA)
 flow_beta_target     6.2    # target beta (ONLY FLOWS IN BETA)
+flow_bc_beta0     0.0       # beta on defect on prior (ONLY FLOWS IN BC)
 protocol_type   0          # 0->linear protocol, otherwise load from protocol_file
 
 # hierarchical update parameters (ONLY FLOWS IN BC): num of hierarc levels ___ extension of rectangles ___ num of sweeps per rectangle

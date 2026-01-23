@@ -44,7 +44,7 @@ void real_main(char *in_file)
   initrand(param.d_randseed);
 
   // initialize protocol parameters
-  init_protocol(&param, 0.0, 1.0);
+  init_protocol(&param, param.d_flow_bc_beta0, 1.0);
 
   // open data_file
   init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
@@ -56,10 +56,10 @@ void real_main(char *in_file)
 
   // initialize gauge configuration
   init_gauge_conf(&GC, &param);
-  init_single_conf_bound_cond(&GC, &param, 0.0);
+  init_single_conf_bound_cond(&GC, &param, param.d_flow_bc_beta0);
 
   init_gauge_conf_from_gauge_conf(&GCstart, &GC, &param);
-  init_single_conf_bound_cond(&GCstart, &param, 0.0);
+  init_single_conf_bound_cond(&GCstart, &param, param.d_flow_bc_beta0);
 
   // initialize rectangles for hierarchical update
   init_rect_hierarc(&most_update, &clover_rectangle, &param);
@@ -78,7 +78,7 @@ void real_main(char *in_file)
   {
     W = 0.0;
 
-    set_bound_cond(&GC, &param, 0.0);
+    set_bound_cond(&GC, &param, param.d_flow_bc_beta0);
 
     // updates between the start of each evolution
     for (rel = 0; rel < param.d_flow_between; rel++)

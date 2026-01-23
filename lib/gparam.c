@@ -87,6 +87,7 @@ void readinput(char *in_file, GParam *param)
   param->d_flow_steps = 0;
   param->d_flow_dmeas = 0;
   param->d_flow_beta_target = 6.0;
+  param->d_flow_bc_beta0 = 0.0;
   param->d_flow_protocol_type = 0;
 
   // default = do not compute chi_prime
@@ -574,7 +575,7 @@ void readinput(char *in_file, GParam *param)
       // 					param->d_pt_bound_cond_coeff[i]=temp_d;
       // 					}
       //         }
-      else if (strncmp(str, "flow_beta_target", 15) == 0)
+      else if (strncmp(str, "flow_beta_target", 16) == 0)
       {
         err = fscanf(input, "%lf", &temp_d);
         if (err != 1)
@@ -584,7 +585,17 @@ void readinput(char *in_file, GParam *param)
         }
         param->d_flow_beta_target = temp_d;
       }
-      else if (strncmp(str, "num_flow_ev", 10) == 0)
+      else if (strncmp(str, "flow_bc_beta0", 13) == 0)
+      {
+        err = fscanf(input, "%lf", &temp_d);
+        if (err != 1)
+        {
+          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+          exit(EXIT_FAILURE);
+        }
+        param->d_flow_bc_beta0 = temp_d;
+      }
+      else if (strncmp(str, "num_flow_ev", 11) == 0)
       {
         err = fscanf(input, "%d", &temp_i);
         if (err != 1)
@@ -594,7 +605,7 @@ void readinput(char *in_file, GParam *param)
         }
         param->d_flow_evolutions = temp_i;
       }
-      else if (strncmp(str, "num_flow_steps", 13) == 0)
+      else if (strncmp(str, "num_flow_steps", 14) == 0)
       {
         err = fscanf(input, "%d", &temp_i);
         if (err != 1)
@@ -604,7 +615,7 @@ void readinput(char *in_file, GParam *param)
         }
         param->d_flow_steps = temp_i;
       }
-      else if (strncmp(str, "num_flow_between", 13) == 0)
+      else if (strncmp(str, "num_flow_between", 16) == 0)
       {
         err = fscanf(input, "%d", &temp_i);
         if (err != 1)
@@ -614,7 +625,7 @@ void readinput(char *in_file, GParam *param)
         }
         param->d_flow_between = temp_i;
       }
-      else if (strncmp(str, "num_flow_dmeas", 13) == 0)
+      else if (strncmp(str, "num_flow_dmeas", 14) == 0)
       {
         err = fscanf(input, "%d", &temp_i);
         if (err != 1)
