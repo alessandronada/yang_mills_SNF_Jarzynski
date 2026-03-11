@@ -171,15 +171,10 @@ void real_main(char *in_file)
 
   // free gauge configurations
   free_gauge_conf(&GC, &param);
-  free_bound_cond(&GC, &param);
   free_gauge_conf(&GCstart, &param);
-  free_bound_cond(&GCstart, &param);
 
   // free geometry
   free_geometry(&geo, &param);
-
-  // free update parameters
-  free_hierarc_params(&param);
 }
 
 void print_template_input(void)
