@@ -114,13 +114,13 @@ void real_main(char *in_file)
       if ((step + 1) % param.d_flow_dmeas == 0 && step != (param.d_flow_steps - 1))
       {
         perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
-        print_work(count, W, workfilep);
+        print_work((int)GC.evolution_index, W, workfilep);
       }
     }
 
     // perform measures only on PBC configuration
     perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
-    print_work(count, W, workfilep);
+    print_work((int)GC.evolution_index, W, workfilep);
 
     // save initial (beta0) and final (target beta) configurations for offline analysis
     if (param.d_saveconf_analysis_every != 0)
