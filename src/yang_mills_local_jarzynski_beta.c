@@ -23,10 +23,11 @@ void real_main(char *in_file)
   Gauge_Conf GC, GCstart;
   Geometry geo;
   GParam param;
-  double W = 0.0, beta0 = 0.0, old_beta = 0.0, act = 0.0, plaqs, plaqt;
+  double W = 0.0, beta_0 = 0.0, old_beta = 0.0, beta_t_0 = 0.0, old_beta_t = 0.0, act = 0.0, act_s = 0.0, act_t = 0.0, plaqs, plaqt;
+  double *protocol_start, *protocol_end;
 
   //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-  int count, rel, step;
+  int npar, count, rel, step;
   FILE *datafilep, *chiprimefilep, *topchar_tprof_filep, *workfilep;
   time_t time1, time2;
 
@@ -43,7 +44,12 @@ void real_main(char *in_file)
   initrand(param.d_randseed);
 
   // initialize protocol parameters
-  init_protocol(&param, param.d_beta, param.d_flow_beta_target);
+  if (param.d_anisotropic)
+    npar = 2;
+  else
+    npar = 1;
+  init_start_end_protocol_beta(&param, protocol_start, protocol_end, npar);
+  init_protocol(&param, protocol_start, protocol_end, npar);
 
   // open data_file
   init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
@@ -60,7 +66,9 @@ void real_main(char *in_file)
 
   // Monte Carlo begin
   time(&time1);
-  beta0 = param.d_beta;
+  beta_0 = param.d_beta;
+  if (param.d_anisotropic)
+    beta_t_0 = param.d_beta_t;
 
   // thermalization
   for (count = 0; count < param.d_thermal; count++)
@@ -72,7 +80,9 @@ void real_main(char *in_file)
   for (count = 0; count < param.d_flow_evolutions; count++)
   {
     W = 0.0;
-    param.d_beta = beta0;
+    param.d_beta = beta_0;
+    if (param.d_anisotropic)
+      param.d_beta_t = beta_t_0;
 
     // updates between the start of each evolution
     for (rel = 0; rel < param.d_flow_between; rel++)
@@ -90,11 +100,19 @@ void real_main(char *in_file)
       // change beta and compute work
       old_beta = param.d_beta;
       param.d_beta = param.d_flow_protocol[step];
-
-      plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-      act = 1 - 0.5 * (plaqs + plaqt);
-      act *= 6 / param.d_inv_vol;
-      W += (param.d_beta - old_beta) * act;
+      if (param.d_anisotropic)
+      {
+        old_beta_t = param.d_beta_t;
+        param.d_beta_t = param.d_flow_protocol[param.d_flow_steps + step];
+        act_s = 3 * param.d_volume * (0.5 - 0.5 * plaqs);
+        act_t = 3 * param.d_volume * (0.5 - 0.5 * plaqt);
+        W += (param.d_beta - old_beta) * act_s + (param.d_beta_t - old_beta_t) * act_t;
+      }
+      else
+      {
+        act = 6 * param.d_volume * (1.0 - 0.5 * (plaqs + plaqt));
+        W += (param.d_beta - old_beta) * act;
+      }
 
       // perform a single step of updates with new beta
       update(&GC, &geo, &param);
@@ -106,7 +124,6 @@ void real_main(char *in_file)
       }
     }
 
-    // perform measures only on PBC configuration
     perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
     print_work((int)GC.evolution_index, W, workfilep);
 
@@ -154,7 +171,8 @@ void real_main(char *in_file)
   }
 
   // print simulation details
-  param.d_beta = beta0;
+  param.d_beta = beta_0;
+  param.d_beta_t = beta_t_0;
   print_parameters_local_flow_beta(&param, time1, time2);
 
   // free gauge configurations

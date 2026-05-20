@@ -25,9 +25,10 @@ void real_main(char *in_file)
     GParam param;
     Rectangle *most_update, *clover_rectangle, defect_rect;
     double W = 0.0, act0 = 0.0, act1 = 0.0, logJ;
+    double *protocol_start, *protocol_end;
 
     //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-    int count, rel, step;
+    int npar, count, rel, step;
     FILE *datafilep, *chiprimefilep, *topchar_tprof_filep, *workfilep;
     time_t time1, time2;
 
@@ -44,7 +45,9 @@ void real_main(char *in_file)
     initrand(param.d_randseed);
 
     // initialize protocol parameters
-    init_protocol(&param, param.d_flow_bc_beta0, 1.0);
+    npar = 1;
+    init_start_end_protocol_beta(&param, protocol_start, protocol_end, npar);
+    init_protocol(&param, protocol_start, protocol_end, npar);
 
     // open data_file
     init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);

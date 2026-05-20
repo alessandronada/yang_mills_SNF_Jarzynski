@@ -21,9 +21,10 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
                         long r,
                         int i,
                         GAUGE_GROUP *M)
-  {
+{
   int j, l;
   long k;
+  double factor = param->d_beta_t / param->d_beta;
   GAUGE_GROUP link1, link2, link3, link12, stap;
 
   #ifdef DEBUG
@@ -37,8 +38,8 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
     fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
     exit(EXIT_FAILURE);
     }
-  #else
-  (void) param; // just to avoid warnings
+  //#else
+  //(void) param; // just to avoid warnings
   #endif
 
   zero(M); // M=0
@@ -67,6 +68,10 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
      times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
      times_dag2(&stap, &link12, &link3);   // stap=link12*link3^{dag}
 
+     if (param->d_anisotropic)
+       if (i == 0 | j == 0)
+         times_equal_real(&stap, factor);
+
      plus_equal(M, &stap);
 
 //
@@ -90,6 +95,10 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
 
      times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
      times(&stap, &link12, &link3);        // stap=link12*link3
+
+     if (param->d_anisotropic)
+       if (i == 0 | j == 0)
+         times_equal_real(&stap, factor);
 
      plus_equal(M, &stap);
      }
@@ -543,9 +552,9 @@ void calcstaples_wilson_with_defect(Gauge_Conf const * const GC,
      times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
      times_dag2(&stap, &link12, &link3);   // stap=link12*stap^{dag}
 		 
-		 // boundary condition modification
-		 factor=(GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]); //K_\mu\nu(x)
-		 times_equal_real(&stap, factor); //K_\mu\nu(x) * staple
+	  // boundary condition modification
+	  factor=(GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]); //K_\mu\nu(x)
+	  times_equal_real(&stap, factor); //K_\mu\nu(x) * staple
 
      plus_equal(M, &stap);
 

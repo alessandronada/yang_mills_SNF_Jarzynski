@@ -12,13 +12,17 @@ typedef struct GParam {
   int d_size[STDIM];
 
   // simulation parameters
-  double d_beta;
+  double d_beta; // beta (just for spacelike plaquettes ONLY in anisotropic simulations)
   double d_h[NCOLOR]; // parameters for the trace deformation
   double d_theta;
 	
   // OBC defect parameters
   int d_defect_dir;				// defect boundary
   int d_L_defect[STDIM - 1];	// defect sizes
+
+  // anisotropy parameters
+  int d_anisotropic;  // 0 isotropic lattice, 1 anisotropic
+  double d_beta_t; // beta for timelike plaquettes (anisotropic simulations ONLY)
 
   // parallel tempering parameters
   int d_N_replica_pt;		// numbers of replica used in parallel tempering
@@ -29,8 +33,9 @@ typedef struct GParam {
   int d_flow_between;	// relax steps between evolutions
   int d_flow_steps;	// steps in each evolution
   int d_flow_dmeas;	// steps between each measurement during evolution
-  double d_flow_beta_target;     // target beta, only for evolutions in beta
-  double d_flow_bc_beta0;       // starting beta on defect (for OBC is 0)
+  double d_flow_beta_target;     // target beta for plaquettes, ONLY for evolutions in beta (spacelike plaquettes for anisotropic simulations)
+  double d_flow_beta_t_target;     // target beta for timelike plaquettes, ONLY for evolutions in anisotropic beta
+  double d_flow_bc_beta0;       // starting beta on defect (for OBC is 0), ONLY for evolutions in bc
   int d_flow_protocol_type;    // 0 for linear protocol, otherwise load from file
   double* d_flow_protocol;     // array for protocol parameters
   double* d_SNF_rho;        // array for smearing parameters
@@ -112,7 +117,9 @@ typedef struct GParam {
 void remove_white_line_and_comments(FILE *input);
 void readinput(char *in_file, GParam *param);
 void init_derived_constants(GParam *param);
-void init_protocol(GParam const * const param, double start, double end);
+void init_start_end_protocol_beta(GParam const *const param, double *protocol_start, double *protocol_end);
+void init_start_end_protocol_bc(GParam const *const param, double *protocol_start, double *protocol_end);
+void init_protocol(GParam const * const param, double *start, double *end, int npar);
 void init_smearing_parameter(GParam const * const param);
 void init_defect_smearing_parameter(GParam const * const param, long rect_vol);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tprof_f, GParam const * const param);

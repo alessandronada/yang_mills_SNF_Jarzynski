@@ -87,6 +87,7 @@ void readinput(char *in_file, GParam *param)
   param->d_flow_steps = 0;
   param->d_flow_dmeas = 0;
   param->d_flow_beta_target = 6.0;
+  param->d_flow_beta_t_target = 6.0;
   param->d_flow_bc_beta0 = 0.0;
   param->d_flow_protocol_type = 0;
 
@@ -138,6 +139,28 @@ void readinput(char *in_file, GParam *param)
         }
         param->d_beta = temp_d;
       }
+      
+      else if (strncmp(str, "anisotropic", 11) == 0)
+      {
+        err = fscanf(input, "%d", &temp_i);
+        if (err != 1)
+        {
+          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+          exit(EXIT_FAILURE);
+        }
+        param->d_anisotropic = temp_i;
+      }
+      else if (strncmp(str, "beta_t", 6) == 0)
+      {
+        err = fscanf(input, "%lf", &temp_d);
+        if (err != 1)
+        {
+          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+          exit(EXIT_FAILURE);
+        }
+        param->d_beta_t = temp_d;
+      }
+
       else if (strncmp(str, "htracedef", 9) == 0)
       {
         for (i = 0; i < (int)floor(NCOLOR / 2.0); i++)
@@ -575,6 +598,7 @@ void readinput(char *in_file, GParam *param)
       // 					param->d_pt_bound_cond_coeff[i]=temp_d;
       // 					}
       //         }
+
       else if (strncmp(str, "flow_beta_target", 16) == 0)
       {
         err = fscanf(input, "%lf", &temp_d);
@@ -585,6 +609,17 @@ void readinput(char *in_file, GParam *param)
         }
         param->d_flow_beta_target = temp_d;
       }
+      else if (strncmp(str, "flow_beta_t_target", 16) == 0)
+      {
+        err = fscanf(input, "%lf", &temp_d);
+        if (err != 1)
+        {
+          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+          exit(EXIT_FAILURE);
+        }
+        param->d_flow_beta_t_target = temp_d;
+      }
+
       else if (strncmp(str, "flow_bc_beta0", 13) == 0)
       {
         err = fscanf(input, "%lf", &temp_d);
@@ -821,7 +856,7 @@ void readinput(char *in_file, GParam *param)
       fprintf(stderr, "Error: all sizes has to be larger than 1: the totally reduced case is not implemented! (%s, %d)\n", __FILE__, __LINE__);
     }
 
-    // various checks on parallel tempering parameters
+    // various checks on OBC defect parameters
     if (param->d_L_defect[0] > param->d_size[0])
     {
       fprintf(stderr, "Error: defect's t-length is greater than lattice's t-length (%s, %d)\n", __FILE__, __LINE__);
@@ -877,16 +912,55 @@ void init_derived_constants(GParam *param)
 
   // number of grid points (multicanonic only)
   param->d_n_grid = (int)((2.0 * param->d_grid_max / param->d_grid_step) + 1.0);
+
+  
+  // for isotropic simulations only beta_t is set to be beta
+  if (param->d_anisotropic == 0)
+  {
+    param->d_beta_t = param->d_beta;
+    param->d_flow_beta_t_target = param->d_flow_beta_target;
+  }
 }
 
-void init_protocol(GParam const *const param, double start, double end)
+void init_start_end_protocol_beta(GParam const *const param, double *protocol_start, double *protocol_end, int npar)
+{
+  int err;
+
+  err = posix_memalign((void **)&(protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+  err = posix_memalign((void **)&(protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+
+  if (param.d_anisotropic)
+    protocol_start[0] = param.d_beta;
+    protocol_start[1] = param.d_beta_t;
+    protocol_end[0] = param.d_flow_beta_target;
+    protocol_end[1] = param.d_flow_beta_t_target;
+  else
+    protocol_start[0] = param.d_beta;
+    protocol_end[0] = param.d_flow_beta_target;
+}
+
+void init_start_end_protocol_bc(GParam const *const param, double *protocol_start, double *protocol_end)
+{
+  int npar;
+  int err;
+  
+  npar = 1;
+
+  err = posix_memalign((void **)&(protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+  err = posix_memalign((void **)&(protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+
+  protocol_start[0] = param.d_flow_bc_beta0;
+  protocol_end[0] = 1.0;
+}
+
+void init_protocol(GParam const *const param, double *start, double *end, int npar)
 {
   FILE *input_protocol;
   double temp_d;
-  int i;
+  int i, p;
   int err;
 
-  err = posix_memalign((void **)&(param->d_flow_protocol), (size_t)DOUBLE_ALIGN, (size_t)param->d_flow_steps * sizeof(double));
+  err = posix_memalign((void **)&(param->d_flow_protocol), (size_t)DOUBLE_ALIGN, (size_t)param->d_flow_steps * npar * sizeof(double));
   if (err != 0)
   {
     fprintf(stderr, "Problems in allocating protocol parameters! (%s, %d)\n", __FILE__, __LINE__);
@@ -904,22 +978,26 @@ void init_protocol(GParam const *const param, double start, double end)
     }
     else
     {
-      for (i = 0; i < param->d_flow_steps; i++)
+      for (p = 0; p < param->npar; p++)
       {
-        err = fscanf(input_protocol, "%lf", &temp_d);
-        if (err != 1)
+        for (i = 0; i < param->d_flow_steps; i++)
         {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_protocol_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
+          err = fscanf(input_protocol, "%lf", &temp_d);
+          if (err != 1)
+          {
+            fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_protocol_file, __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+          }
+          param->d_flow_protocol[p * param->d_flow_steps + i] = temp_d;
         }
-        param->d_flow_protocol[i] = temp_d;
       }
+      
     }
   }
   else
   {
     for (i = 0; i < param->d_flow_steps; i++)
-      param->d_flow_protocol[i] = (double)((end - start) * ((double)(i + 1)) / param->d_flow_steps + start);
+      param->d_flow_protocol[p * param->d_flow_steps + i] = (double)((end[p] - start[p]) * ((double)(i + 1)) / param->d_flow_steps + start[p]);
   }
 }
 
@@ -1136,6 +1214,8 @@ void init_work_file(FILE **workfilep, GParam const *const param)
     int i;
     *workfilep = fopen(param->d_work_file, "w");
     fprintf(*workfilep, "# %f ", param->d_beta);
+    if (param->d_anisotropic != 0)
+      fprintf(*workfilep, "# %f ", param->d_beta_t);
     fprintf(*workfilep, "%d ", STDIM);
     for (i = 0; i < STDIM; i++)
       fprintf(*workfilep, "%d ", param->d_size[i]);
@@ -1185,7 +1265,10 @@ void print_parameters_local(GParam const *const param, time_t time_start, time_t
   }
   fprintf(fp, "\n\n");
 
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
   fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -1284,6 +1367,7 @@ void print_parameters_local(GParam const *const param, time_t time_start, time_t
 // 		fprintf(fp,"\n\n");
 
 //     fprintf(fp, "beta: %.10lf\n", param->d_beta);
+//     fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 //     #ifdef THETA_MODE
 //       fprintf(fp, "theta: %.10lf\n", param->d_theta);
 //     #endif
@@ -1378,6 +1462,7 @@ void print_parameters_local(GParam const *const param, time_t time_start, time_t
 // 		fprintf(fp,"\n\n");
 
 //     fprintf(fp, "beta: %.10lf\n", param->d_beta);
+//     fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 //     #ifdef THETA_MODE
 //       fprintf(fp, "theta: %.10lf\n", param->d_theta);
 //     #endif
@@ -1470,7 +1555,10 @@ void print_parameters_local_flow_bc(GParam const *const param, time_t time_start
   }
   fprintf(fp, "\n\n");
 
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
   fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -1516,7 +1604,7 @@ void print_parameters_local_flow_beta(GParam const *const param, time_t time_sta
 
   fp = fopen(param->d_log_file, "w");
   fprintf(fp, "+---------------------------------------------------+\n");
-  fprintf(fp, "| Simulation details for yang_mills_local_jarzynski/snf_bc |\n");
+  fprintf(fp, "| Simulation details for yang_mills_local_jarzynski/snf_beta |\n");
   fprintf(fp, "+---------------------------------------------------+\n\n");
 
 #ifdef OPENMP_MODE
@@ -1539,8 +1627,12 @@ void print_parameters_local_flow_beta(GParam const *const param, time_t time_sta
   fprintf(fp, "number of steps between measurements during evolution: %d\n", param->d_flow_dmeas);
   fprintf(fp, "\n\n");
 
-  fprintf(fp, "beta: %.10lf\n", param->d_beta);
-  fprintf(fp, "beta target: %.10lf\n", param->d_flow_beta_target);
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
+  fprintf(fp, "beta_0: %.10lf\n", param->d_beta);
+  fprintf(fp, "beta_target: %.10lf\n", param->d_flow_beta_target);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t_0: %.10lf\n", param->d_beta_t);
+    fprintf(fp, "beta_t_target: %.10lf\n", param->d_flow_beta_t_target);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -1604,7 +1696,10 @@ void print_parameters_polycorr_long(GParam *param, time_t time_start, time_t tim
   }
   fprintf(fp, "\n\n");
 
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
   fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -1682,7 +1777,10 @@ void print_parameters_polycorr(GParam *param, time_t time_start, time_t time_end
   }
   fprintf(fp, "\n\n");
 
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
   fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -1859,7 +1957,10 @@ void print_parameters_tracedef(GParam const *const param, time_t time_start, tim
   }
   fprintf(fp, "\n\n");
 
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
   fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -1934,7 +2035,10 @@ void print_parameters_tube_disc(GParam *param, time_t time_start, time_t time_en
   }
   fprintf(fp, "\n\n");
 
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
   fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -2014,7 +2118,10 @@ void print_parameters_tube_conn(GParam *param, time_t time_start, time_t time_en
   }
   fprintf(fp, "\n\n");
 
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
   fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
@@ -2094,7 +2201,10 @@ void print_parameters_tube_conn_long(GParam *param, time_t time_start, time_t ti
   }
   fprintf(fp, "\n\n");
 
+  fprintf(fp, "anisotropy: %d\n", param->d_anisotropic);
   fprintf(fp, "beta: %.10lf\n", param->d_beta);
+  if (param->d_anisotropic != 0)
+    fprintf(fp, "beta_t: %.10lf\n", param->d_beta_t);
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
