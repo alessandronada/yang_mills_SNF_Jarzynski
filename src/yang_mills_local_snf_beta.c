@@ -24,7 +24,6 @@ void real_main(char *in_file)
   Geometry geo;
   GParam param;
   double W = 0.0, beta_0 = 0.0, beta_t_0 = 0.0, act0 = 0.0, act1 = 0.0, act0_s = 0.0, act0_t = 0.0, act1_s = 0.0, act1_t = 0.0, plaqs, plaqt, logJ;
-  double *protocol_start, *protocol_end;
 
   //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
   int npar, count, rel, step;
@@ -48,8 +47,8 @@ void real_main(char *in_file)
     npar = 2;
   else
     npar = 1;
-  init_start_end_protocol_beta(&param, protocol_start, protocol_end, npar);
-  init_protocol(&param, protocol_start, protocol_end, npar);
+  init_start_end_protocol_beta(&param, npar);
+  init_protocol(&param, npar);
 
   // initialize smearing parameters
   init_smearing_parameter(&param);

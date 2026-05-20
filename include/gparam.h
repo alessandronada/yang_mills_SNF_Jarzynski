@@ -28,15 +28,19 @@ typedef struct GParam {
   int d_N_replica_pt;		// numbers of replica used in parallel tempering
   double* d_pt_bound_cond_coeff; // boundary conditions coefficients
 
-  // Jarzynski parameters
+  // Jarzynski/SNF parameters
   int d_flow_evolutions; // number of out-of-equilibrium evolutions
   int d_flow_between;	// relax steps between evolutions
   int d_flow_steps;	// steps in each evolution
   int d_flow_dmeas;	// steps between each measurement during evolution
+
+  // Jarzynski/SNF protocol parameters
   double d_flow_beta_target;     // target beta for plaquettes, ONLY for evolutions in beta (spacelike plaquettes for anisotropic simulations)
   double d_flow_beta_t_target;     // target beta for timelike plaquettes, ONLY for evolutions in anisotropic beta
   double d_flow_bc_beta0;       // starting beta on defect (for OBC is 0), ONLY for evolutions in bc
   int d_flow_protocol_type;    // 0 for linear protocol, otherwise load from file
+  double* d_flow_protocol_start;  // array for protocol parameters starting values
+  double* d_flow_protocol_end;   // array for protocol parameters ending values
   double* d_flow_protocol;     // array for protocol parameters
   double* d_SNF_rho;        // array for smearing parameters
 	
@@ -117,9 +121,9 @@ typedef struct GParam {
 void remove_white_line_and_comments(FILE *input);
 void readinput(char *in_file, GParam *param);
 void init_derived_constants(GParam *param);
-void init_start_end_protocol_beta(GParam const *const param, double *protocol_start, double *protocol_end);
-void init_start_end_protocol_bc(GParam const *const param, double *protocol_start, double *protocol_end);
-void init_protocol(GParam const * const param, double *start, double *end, int npar);
+void init_start_end_protocol_beta(GParam const *const param, int npar);
+void init_start_end_protocol_bc(GParam const *const param);
+void init_protocol(GParam const * const param, int npar);
 void init_smearing_parameter(GParam const * const param);
 void init_defect_smearing_parameter(GParam const * const param, long rect_vol);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tprof_f, GParam const * const param);

@@ -24,7 +24,6 @@ void real_main(char *in_file)
   Geometry geo;
   GParam param;
   double W = 0.0, beta_0 = 0.0, old_beta = 0.0, beta_t_0 = 0.0, old_beta_t = 0.0, act = 0.0, act_s = 0.0, act_t = 0.0, plaqs, plaqt;
-  double *protocol_start, *protocol_end;
 
   //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
   int npar, count, rel, step;
@@ -48,8 +47,8 @@ void real_main(char *in_file)
     npar = 2;
   else
     npar = 1;
-  init_start_end_protocol_beta(&param, protocol_start, protocol_end, npar);
-  init_protocol(&param, protocol_start, protocol_end, npar);
+  init_start_end_protocol_beta(&param, npar);
+  init_protocol(&param, npar);
 
   // open data_file
   init_data_file(&datafilep, &chiprimefilep, &topchar_tprof_filep, &param);
@@ -100,6 +99,8 @@ void real_main(char *in_file)
       // change beta and compute work
       old_beta = param.d_beta;
       param.d_beta = param.d_flow_protocol[step];
+
+      plaquette(&GC, &geo, &param, &plaqs, &plaqt);
       if (param.d_anisotropic)
       {
         old_beta_t = param.d_beta_t;

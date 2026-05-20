@@ -922,38 +922,36 @@ void init_derived_constants(GParam *param)
   }
 }
 
-void init_start_end_protocol_beta(GParam const *const param, double *protocol_start, double *protocol_end, int npar)
+void init_start_end_protocol_beta(GParam const *const param, int npar)
 {
   int err;
 
-  err = posix_memalign((void **)&(protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
-  err = posix_memalign((void **)&(protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+  err = posix_memalign((void **)&(param->d_flow_protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+  err = posix_memalign((void **)&(param->d_flow_protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
 
   if (param.d_anisotropic)
-    protocol_start[0] = param.d_beta;
-    protocol_start[1] = param.d_beta_t;
-    protocol_end[0] = param.d_flow_beta_target;
-    protocol_end[1] = param.d_flow_beta_t_target;
+    param->d_flow_protocol_start[0] = param.d_beta;
+    param->d_flow_protocol_start[1] = param.d_beta_t;
+    param->d_flow_protocol_end[0] = param.d_flow_beta_target;
+    param->d_flow_protocol_end[1] = param.d_flow_beta_t_target;
   else
-    protocol_start[0] = param.d_beta;
-    protocol_end[0] = param.d_flow_beta_target;
+    param->d_flow_protocol_start[0] = param.d_beta;
+    param->d_flow_protocol_end[0] = param.d_flow_beta_target;
 }
 
-void init_start_end_protocol_bc(GParam const *const param, double *protocol_start, double *protocol_end)
+void init_start_end_protocol_bc(GParam const *const param)
 {
-  int npar;
+  int npar = 1;
   int err;
-  
-  npar = 1;
 
-  err = posix_memalign((void **)&(protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
-  err = posix_memalign((void **)&(protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+  err = posix_memalign((void **)&(param->d_flow_protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+  err = posix_memalign((void **)&(param->d_flow_protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
 
-  protocol_start[0] = param.d_flow_bc_beta0;
-  protocol_end[0] = 1.0;
+  param->d_flow_protocol_start[0] = param.d_flow_bc_beta0;
+  param->d_flow_protocol_end[0] = 1.0;
 }
 
-void init_protocol(GParam const *const param, double *start, double *end, int npar)
+void init_protocol(GParam const *const param, int npar)
 {
   FILE *input_protocol;
   double temp_d;
@@ -979,7 +977,6 @@ void init_protocol(GParam const *const param, double *start, double *end, int np
     else
     {
       for (p = 0; p < param->npar; p++)
-      {
         for (i = 0; i < param->d_flow_steps; i++)
         {
           err = fscanf(input_protocol, "%lf", &temp_d);
@@ -990,14 +987,13 @@ void init_protocol(GParam const *const param, double *start, double *end, int np
           }
           param->d_flow_protocol[p * param->d_flow_steps + i] = temp_d;
         }
-      }
-      
     }
   }
   else
   {
-    for (i = 0; i < param->d_flow_steps; i++)
-      param->d_flow_protocol[p * param->d_flow_steps + i] = (double)((end[p] - start[p]) * ((double)(i + 1)) / param->d_flow_steps + start[p]);
+    for (p = 0; p < param->npar; p++)   
+      for (i = 0; i < param->d_flow_steps; i++)
+        param->d_flow_protocol[p * param->d_flow_steps + i] = (double)((param->d_flow_protocol_end[p] - param->d_flow_protocol_start[p]) * ((double)(i + 1)) / param->d_flow_steps + param->d_flow_protocol_start[p]);
   }
 }
 
