@@ -929,14 +929,18 @@ void init_start_end_protocol_beta(GParam const *const param, int npar)
   err = posix_memalign((void **)&(param->d_flow_protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
   err = posix_memalign((void **)&(param->d_flow_protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
 
-  if (param.d_anisotropic)
-    param->d_flow_protocol_start[0] = param.d_beta;
-    param->d_flow_protocol_start[1] = param.d_beta_t;
-    param->d_flow_protocol_end[0] = param.d_flow_beta_target;
-    param->d_flow_protocol_end[1] = param.d_flow_beta_t_target;
+  if (param->d_anisotropic)
+  {
+    param->d_flow_protocol_start[0] = param->d_beta;
+    param->d_flow_protocol_start[1] = param->d_beta_t;
+    param->d_flow_protocol_end[0] = param->d_flow_beta_target;
+    param->d_flow_protocol_end[1] = param->d_flow_beta_t_target;
+  }
   else
-    param->d_flow_protocol_start[0] = param.d_beta;
-    param->d_flow_protocol_end[0] = param.d_flow_beta_target;
+  {
+    param->d_flow_protocol_start[0] = param->d_beta;
+    param->d_flow_protocol_end[0] = param->d_flow_beta_target;
+  }
 }
 
 void init_start_end_protocol_bc(GParam const *const param)
@@ -947,7 +951,7 @@ void init_start_end_protocol_bc(GParam const *const param)
   err = posix_memalign((void **)&(param->d_flow_protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
   err = posix_memalign((void **)&(param->d_flow_protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
 
-  param->d_flow_protocol_start[0] = param.d_flow_bc_beta0;
+  param->d_flow_protocol_start[0] = param->d_flow_bc_beta0;
   param->d_flow_protocol_end[0] = 1.0;
 }
 
@@ -976,7 +980,7 @@ void init_protocol(GParam const *const param, int npar)
     }
     else
     {
-      for (p = 0; p < param->npar; p++)
+      for (p = 0; p < npar; p++)
         for (i = 0; i < param->d_flow_steps; i++)
         {
           err = fscanf(input_protocol, "%lf", &temp_d);
@@ -991,7 +995,7 @@ void init_protocol(GParam const *const param, int npar)
   }
   else
   {
-    for (p = 0; p < param->npar; p++)   
+    for (p = 0; p < npar; p++)   
       for (i = 0; i < param->d_flow_steps; i++)
         param->d_flow_protocol[p * param->d_flow_steps + i] = (double)((param->d_flow_protocol_end[p] - param->d_flow_protocol_start[p]) * ((double)(i + 1)) / param->d_flow_steps + param->d_flow_protocol_start[p]);
   }
