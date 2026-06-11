@@ -23,7 +23,7 @@ void real_main(char *in_file)
   Gauge_Conf GC, GCstart;
   Geometry geo;
   GParam param;
-  double W = 0.0, beta_0 = 0.0, beta_t_0 = 0.0, act0 = 0.0, act1 = 0.0, act0_s = 0.0, act0_t = 0.0, act1_s = 0.0, act1_t = 0.0, plaqs, plaqt, logJ;
+  double W = 0.0, beta_0 = 0.0, beta_t_0 = 0.0, act0 = 0.0, act1 = 0.0, act0_t = 0.0, act1_t = 0.0, plaqs, plaqt, logJ;
 
   //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
   int npar, count, rel, step;
@@ -103,13 +103,12 @@ void real_main(char *in_file)
       plaquette(&GC, &geo, &param, &plaqs, &plaqt);
       if (param.d_anisotropic)
       {
-        act0_s = param.d_beta * 3.0 * param.d_volume * (0.5 - 0.5 * plaqs);
-        act0_t = param.d_beta_t * 3.0 * param.d_volume * (0.5 - 0.5 * plaqt);
+        act0 = param.d_beta * 3.0 * param.d_volume * (1.0 - plaqs);
+        act0_t = param.d_beta_t * 3.0 * param.d_volume * (1.0 - plaqt);
       }
       else
       {
-        act0 = 1.0 - 0.5 * (plaqs + plaqt);
-        act0 *= param.d_beta * 6.0 * param.d_volume;
+        act0 = param.d_beta * 6.0 * param.d_volume * (1.0 - 0.5 * (plaqs + plaqt));
       }
       
       // stout smearing step: U_i -> g_i(U_i)
@@ -120,27 +119,18 @@ void real_main(char *in_file)
       if (param.d_anisotropic != 0)
         param.d_beta_t = param.d_flow_protocol[param.d_flow_steps + step];
 
-      // compute S_beta(i+1) (g_i(U_i))
+      // compute S_beta(i+1) (g_i(U_i)) and work
       plaquette(&GC, &geo, &param, &plaqs, &plaqt);
       if (param.d_anisotropic != 0)
       {
-        act1_s = param.d_beta * 3.0 * param.d_volume * (0.5 - 0.5 * plaqs);
-        act1_t = param.d_beta_t * 3.0 * param.d_volume * (0.5 - 0.5 * plaqt);
+        act1 = param.d_beta * 3.0 * param.d_volume * (1.0 - plaqs);
+        act1_t = param.d_beta_t * 3.0 * param.d_volume * (1.0 - plaqt);
+        W += act1 + act1_t - act0 - act0_t - logJ;
       }
       else
       {
-        act1 = 1.0 - 0.5 * (plaqs + plaqt);
-        act1 *= param.d_beta * 6.0 * param.d_volume;
-      }
-
-      // compute work step
-      if (param.d_anisotropic != 0)
-      {
-        W += act1_s + act1_t - act0_s - act0_t - logJ;
-      }
-      else
-      {
-        W += act1 - act0;
+        act1 = param.d_beta * 6.0 * param.d_volume * (1.0 - 0.5 * (plaqs + plaqt));
+        W += act1 - act0 - logJ;
       }
 
       // MC update: g_i(U_i) -> U_(i+1)

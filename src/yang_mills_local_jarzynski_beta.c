@@ -23,7 +23,7 @@ void real_main(char *in_file)
   Gauge_Conf GC, GCstart;
   Geometry geo;
   GParam param;
-  double W = 0.0, beta_0 = 0.0, old_beta = 0.0, beta_t_0 = 0.0, old_beta_t = 0.0, act = 0.0, act_s = 0.0, act_t = 0.0, plaqs, plaqt;
+  double W = 0.0, beta_0 = 0.0, old_beta = 0.0, beta_t_0 = 0.0, old_beta_t = 0.0, act = 0.0, act_t = 0.0, plaqs, plaqt;
 
   //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
   int npar, count, rel, step;
@@ -105,9 +105,9 @@ void real_main(char *in_file)
       {
         old_beta_t = param.d_beta_t;
         param.d_beta_t = param.d_flow_protocol[param.d_flow_steps + step];
-        act_s = 3 * param.d_volume * (0.5 - 0.5 * plaqs);
-        act_t = 3 * param.d_volume * (0.5 - 0.5 * plaqt);
-        W += (param.d_beta - old_beta) * act_s + (param.d_beta_t - old_beta_t) * act_t;
+        act = 3 * param.d_volume * (1.0 - plaqs);
+        act_t = 3 * param.d_volume * (1.0 - plaqt);
+        W += (param.d_beta - old_beta) * act + (param.d_beta_t - old_beta_t) * act_t;
       }
       else
       {
