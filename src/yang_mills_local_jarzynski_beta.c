@@ -43,7 +43,7 @@ void real_main(char *in_file)
   initrand(param.d_randseed);
 
   // initialize protocol parameters
-  if (param.d_anisotropic)
+  if (param.d_anisotropic != 0)
     npar = 2;
   else
     npar = 1;
@@ -66,7 +66,7 @@ void real_main(char *in_file)
   // Monte Carlo begin
   time(&time1);
   beta_0 = param.d_beta;
-  if (param.d_anisotropic)
+  if (param.d_anisotropic != 0)
     beta_t_0 = param.d_beta_t;
 
   // thermalization
@@ -80,7 +80,7 @@ void real_main(char *in_file)
   {
     W = 0.0;
     param.d_beta = beta_0;
-    if (param.d_anisotropic)
+    if (param.d_anisotropic != 0)
       param.d_beta_t = beta_t_0;
 
     // updates between the start of each evolution
@@ -101,7 +101,7 @@ void real_main(char *in_file)
       param.d_beta = param.d_flow_protocol[step];
 
       plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-      if (param.d_anisotropic)
+      if (param.d_anisotropic != 0)
       {
         old_beta_t = param.d_beta_t;
         param.d_beta_t = param.d_flow_protocol[param.d_flow_steps + step];
@@ -173,7 +173,8 @@ void real_main(char *in_file)
 
   // print simulation details
   param.d_beta = beta_0;
-  param.d_beta_t = beta_t_0;
+  if (param.d_anisotropic != 0)
+    param.d_beta_t = beta_t_0;
   print_parameters_local_flow_beta(&param, time1, time2);
 
   // free gauge configurations

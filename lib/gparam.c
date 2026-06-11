@@ -150,7 +150,7 @@ void readinput(char *in_file, GParam *param)
         }
         param->d_anisotropic = temp_i;
       }
-      else if (strncmp(str, "beta_t", 6) == 0)
+      else if (strncmp(str, "bet_t", 5) == 0)
       {
         err = fscanf(input, "%lf", &temp_d);
         if (err != 1)
@@ -1215,7 +1215,7 @@ void init_work_file(FILE **workfilep, GParam const *const param)
     *workfilep = fopen(param->d_work_file, "w");
     fprintf(*workfilep, "# %f ", param->d_beta);
     if (param->d_anisotropic != 0)
-      fprintf(*workfilep, "# %f ", param->d_beta_t);
+      fprintf(*workfilep, " %f ", param->d_beta_t);
     fprintf(*workfilep, "%d ", STDIM);
     for (i = 0; i < STDIM; i++)
       fprintf(*workfilep, "%d ", param->d_size[i]);

@@ -69,7 +69,7 @@ void real_main(char *in_file)
   // Monte Carlo begin
   time(&time1);
   beta_0 = param.d_beta;
-  if (param.d_anisotropic)
+  if (param.d_anisotropic != 0)
     beta_t_0 = param.d_beta_t;
 
   // thermalization
@@ -83,7 +83,7 @@ void real_main(char *in_file)
   {
     W = 0.0;
     param.d_beta = beta_0;
-    if (param.d_anisotropic)
+    if (param.d_anisotropic != 0)
       param.d_beta_t = beta_t_0;
 
     // updates between the start of each evolution
@@ -117,12 +117,12 @@ void real_main(char *in_file)
 
       // change beta: S_beta(i) -> S_beta(i+1)
       param.d_beta = param.d_flow_protocol[step];
-      if (param.d_anisotropic)
+      if (param.d_anisotropic != 0)
         param.d_beta_t = param.d_flow_protocol[param.d_flow_steps + step];
 
       // compute S_beta(i+1) (g_i(U_i))
       plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-      if (param.d_anisotropic)
+      if (param.d_anisotropic != 0)
       {
         act1_s = param.d_beta * 3.0 * param.d_volume * (0.5 - 0.5 * plaqs);
         act1_t = param.d_beta_t * 3.0 * param.d_volume * (0.5 - 0.5 * plaqt);
@@ -134,7 +134,7 @@ void real_main(char *in_file)
       }
 
       // compute work step
-      if (param.d_anisotropic)
+      if (param.d_anisotropic != 0)
       {
         W += act1_s + act1_t - act0_s - act0_t - logJ;
       }
@@ -202,7 +202,8 @@ void real_main(char *in_file)
 
   // print simulation details
   param.d_beta = beta_0;
-  param.d_beta_t = beta_t_0;
+  if (param.d_anisotropic != 0)
+    param.d_beta_t = beta_t_0;
   print_parameters_local_flow_beta(&param, time1, time2);
 
   // free gauge configurations

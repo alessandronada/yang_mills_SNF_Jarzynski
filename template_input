@@ -1,10 +1,5 @@
 size 8 8 8 8   # Nt Nx Ny Nz
 
-# multicanonic parameters (ONLY MULTICANONIC RUNS)
-grid_step             0.05
-grid_max              5.0
-topo_potential_file   ToPotential
-
 # Simulation parameters
 beta       6.0     # starting beta for flows in beta
 theta      0.0
@@ -13,6 +8,10 @@ thermal    0
 overrelax  4
 measevery  1
 randseed   42      # (0=time)
+
+# Anisotropy paramaters
+anisotropic 0
+beta_t     6.0
 
 start                    0     # 0=ordered  1=random  2=from saved configuration
 saveconf_back_every      1     # if 0 does not save, else save backup starting configurations every ... evolutions
