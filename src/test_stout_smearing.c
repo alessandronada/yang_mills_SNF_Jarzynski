@@ -54,151 +54,13 @@ void test_taexp_SU3(SuN const * const test_A) {
     printf("Max difference between SUN_expA and SU3_expA: %e\n", elem_max);
 }
 
-complex double stout_smearing_detjacobian_test(taexp_Su3_coeffs const * const restrict exp_coeffs, 
+// defined in lib/gauge_conf_upd.c
+complex double stout_smearing_detjacobian(taexp_Su3_coeffs const * const restrict exp_coeffs,
       SuN const * const restrict Q,
       SuN const * const restrict Q2,
       SuN const * const restrict expQ,
       SuN const * const restrict C,
-      SuN const * const restrict link)
-{
-   SuN QL, Q2L, CdagQ, CdagQ2, CdagL, CdagQL;
-
-   SuN Cdag;
-   equal_dag(&Cdag, C);
-
-   times(&QL,  Q,  link);
-   times(&Q2L, Q2, link);
-   times(&CdagQ,  &Cdag, Q);
-   times(&CdagQ2, &Cdag, Q2);
-   times(&CdagL,  &Cdag, link);
-   times(&CdagQL, &Cdag, &QL);
-
-   /*
-    * trQ2 = Tr(Q^2).
-    *
-    * retr_SuN(Q2) = Re Tr(Q2)/3.
-    *
-    * Q is Hermitian, so Tr(Q2) is real.  In exact arithmetic:
-    *
-    *   Tr(Q2) = 3 retr_SuN(Q2).
-    *
-    * We use the real quantity directly.
-    */
-   const double trQ2 = 3.0 * retr_SuN(Q2);
-   const double complex I2 = 0.5 * I;
-   const double complex I6 = - (1.0 / 6.0) * I;
-
-   /*
-    * A0 = i/2 b10 CdagQ + i/2 b20 CdagQ2 - i/(2N) Tr(Q2) b20 C - i/(2N) f1 C)
-    */
-   SuN A0;
-   equal_SuN(&A0, &CdagQ);
-   times_equal_complex_SuN(&A0, I2 * exp_coeffs->b10);
-
-   SuN tmp;
-   equal_SuN(&tmp, &CdagQ2);
-   times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b20);
-   plus_equal_SuN(&A0, &tmp);
-
-   equal_SuN(&tmp, &Cdag);
-   times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b20);
-   plus_equal_SuN(&A0, &tmp);
-
-   equal_SuN(&tmp, &Cdag);
-   times_equal_complex_SuN(&tmp, I6 * exp_coeffs->f1);
-   plus_equal_SuN(&A0, &tmp);
-
-   /*
-    * A1 = i/2 b11 CdagQ + i/2 b21 CdagQ2 - i/(2N) Tr(Q2) b21 C - i/N f2 C
-    */
-   SuN A1;
-   equal_SuN(&A1, &CdagQ);
-   times_equal_complex_SuN(&A1, I2 * exp_coeffs->b11);
-
-   equal_SuN(&tmp, &CdagQ2);
-   times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b21);
-   plus_equal_SuN(&A1, &tmp);
-
-   equal_SuN(&tmp, &Cdag);
-   times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b21);
-   plus_equal_SuN(&A1, &tmp);
-
-   equal_SuN(&tmp, &Cdag);
-   times_equal_complex_SuN(&tmp, 2.0 * I6 * exp_coeffs->f2);
-   plus_equal_SuN(&A1, &tmp);
-
-   /*
-    * A2 = i/2 b12 CdagQ  + i/2 b22 CdagQ2 - i/6 Tr(Q2) b22 C
-    */
-   SuN A2;
-   equal_SuN(&A2, &CdagQ);
-   times_equal_complex_SuN(&A2, I2 * exp_coeffs->b12);
-
-   equal_SuN(&tmp, &CdagQ2);
-   times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b22);
-   plus_equal_SuN(&A2, &tmp);
-
-   equal_SuN(&tmp, &Cdag);
-   times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b22);
-   plus_equal_SuN(&A2, &tmp);
-
-   /*
-    * Assemble the 9x9 Jacobian.
-    * Start with
-    *      expQ otimes I
-    */
-   SuN identity;
-   one_SuN(&identity);
-
-   TensProd jacobian __attribute__((aligned(DOUBLE_ALIGN)));
-   otimes_SuN(&jacobian, expQ, &identity);
-
-   /*
-    * + A0 oplus L
-    */
-   TensProd TP __attribute__((aligned(DOUBLE_ALIGN)));
-
-   oplus_SuN(&TP, &A0, link);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + A1 oplus QL
-    */
-   oplus_SuN(&TP, &A1, &QL);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + A2 oplus Q2L
-    */
-   oplus_SuN(&TP, &A2, &Q2L);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f1 (I otimes CdagL)
-    */
-   otimes_SuN(&TP, &identity, &CdagL);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f1);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f2 (Q otimes CdagL)
-    */
-   otimes_SuN(&TP, Q, &CdagL);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f2);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f2 (I otimes CdagQL)
-    */
-   otimes_SuN(&TP, &identity, &CdagQL);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f2);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * Same determinant routine as before.
-    */
-   return det_TensProd(&jacobian);
-}
+      SuN const * const restrict link);
 
 complex double stout_smearing_chainrules_test(TensProd const * const expderiv, SuN const * const expQ, SuN const * const C, SuN const * const link)
 {
@@ -287,7 +149,7 @@ void isotropic_stout_smearing_withjacobi_test(const GAUGE_GROUP* link,
    times_equal(&link_buff, link); // link = exp(i Q(Omega)) * link
    unitarize(&link_buff); // just correct numerical error
 
-   complex double detJ = stout_smearing_detjacobian_test(&exp_coeffs, &Q, &Q2, &expQ, staple, link);
+   complex double detJ = stout_smearing_detjacobian(&exp_coeffs, &Q, &Q2, &expQ, staple, link);
 
    *abs_detJ = cabs(detJ);
    equal(smeared_link, &link_buff); // no problems if smeared link in GC

@@ -1794,7 +1794,21 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
    unitarize(smeared_link);
 }
 
-complex double stout_smearing_detjacobian(taexp_Su3_coeffs const * const restrict exp_coeffs, 
+/*
+ * det of the 9x9 Jacobian dU'/dU of U' = exp(iQ) U, with Omega = C U^dagger and U^dagger -> U^{-1},
+ * so that both Omega and Omega^dagger vary with U: |det J| is then the full Haar Jacobian and enters
+ * the work without any factor 2. 
+ *
+ *   J = e^{iQ} x 1 + A0 (+) U + A1 (+) QU + A2 (+) Q^2 U
+ *       + i/2 f1 (1 x C^dag U + Om x 1)
+ *       + i/2 f2 (Q x C^dag U + 1 x C^dag Q U + Q Om x 1 + Om x U^dag Q U)
+ *
+ *   A_j = i/2 (b1j M1 + b2j M2 - kappa_j Th / N),   kappa = (Tr(Q^2) b20 + f1, Tr(Q^2) b21 + 2 f2, Tr(Q^2) b22)
+ *   M1 = C^dag Q + U^dag Q Om,   M2 = C^dag Q^2 + U^dag Q^2 Om,   Th = C^dag + U^dag Om
+ *
+ * where A x B : X -> A X B  (otimes_SuN) and  A (+) B : X -> Tr(A X) B  (oplus_SuN).
+ */
+complex double stout_smearing_detjacobian(taexp_Su3_coeffs const * const restrict exp_coeffs,
       SuN const * const restrict Q,
       SuN const * const restrict Q2,
       SuN const * const restrict expQ,
@@ -1814,6 +1828,28 @@ complex double stout_smearing_detjacobian(taexp_Su3_coeffs const * const restric
    times(&CdagQL, &Cdag, &QL);
 
    /*
+    * Terms coming from the U-dependence of Omega = C U^dagger
+    */
+   SuN Om, QOm, QQOm, UdagQL, aux;
+   times_dag2_SuN(&Om, C, link);      // Om = C U^dag
+   times_SuN(&QOm, Q, &Om);           // Q Om
+   times_SuN(&QQOm, Q, &QOm);         // Q^2 Om
+   times_dag1_SuN(&UdagQL, link, &QL); // U^dag Q U
+
+   SuN M1, M2, Th;
+   times_dag1_SuN(&aux, link, &QOm);
+   equal_SuN(&M1, &CdagQ);
+   plus_equal_SuN(&M1, &aux);         // M1 = C^dag Q + U^dag Q Om
+
+   times_dag1_SuN(&aux, link, &QQOm);
+   equal_SuN(&M2, &CdagQ2);
+   plus_equal_SuN(&M2, &aux);         // M2 = C^dag Q^2 + U^dag Q^2 Om
+
+   times_dag1_SuN(&aux, link, &Om);
+   equal_SuN(&Th, &Cdag);
+   plus_equal_SuN(&Th, &aux);         // Th = C^dag + U^dag Om
+
+   /*
     * trQ2 = Tr(Q^2).
     *
     * retr_SuN(Q2) = Re Tr(Q2)/3.
@@ -1829,56 +1865,56 @@ complex double stout_smearing_detjacobian(taexp_Su3_coeffs const * const restric
    const double complex I6 = - (1.0 / 6.0) * I;
 
    /*
-    * A0 = i/2 b10 CdagQ + i/2 b20 CdagQ2 - i/(2N) Tr(Q2) b20 C - i/(2N) f1 C)
+    * A0 = i/2 b10 M1 + i/2 b20 M2 - i/(2N) Tr(Q2) b20 Th - i/(2N) f1 Th
     */
    SuN A0;
-   equal_SuN(&A0, &CdagQ);
+   equal_SuN(&A0, &M1);
    times_equal_complex_SuN(&A0, I2 * exp_coeffs->b10);
 
    SuN tmp;
-   equal_SuN(&tmp, &CdagQ2);
+   equal_SuN(&tmp, &M2);
    times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b20);
    plus_equal_SuN(&A0, &tmp);
 
-   equal_SuN(&tmp, &Cdag);
+   equal_SuN(&tmp, &Th);
    times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b20);
    plus_equal_SuN(&A0, &tmp);
 
-   equal_SuN(&tmp, &Cdag);
+   equal_SuN(&tmp, &Th);
    times_equal_complex_SuN(&tmp, I6 * exp_coeffs->f1);
    plus_equal_SuN(&A0, &tmp);
 
    /*
-    * A1 = i/2 b11 CdagQ + i/2 b21 CdagQ2 - i/(2N) Tr(Q2) b21 C - i/N f2 C
+    * A1 = i/2 b11 M1 + i/2 b21 M2 - i/(2N) Tr(Q2) b21 Th - i/N f2 Th
     */
    SuN A1;
-   equal_SuN(&A1, &CdagQ);
+   equal_SuN(&A1, &M1);
    times_equal_complex_SuN(&A1, I2 * exp_coeffs->b11);
 
-   equal_SuN(&tmp, &CdagQ2);
+   equal_SuN(&tmp, &M2);
    times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b21);
    plus_equal_SuN(&A1, &tmp);
 
-   equal_SuN(&tmp, &Cdag);
+   equal_SuN(&tmp, &Th);
    times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b21);
    plus_equal_SuN(&A1, &tmp);
 
-   equal_SuN(&tmp, &Cdag);
+   equal_SuN(&tmp, &Th);
    times_equal_complex_SuN(&tmp, 2.0 * I6 * exp_coeffs->f2);
    plus_equal_SuN(&A1, &tmp);
 
    /*
-    * A2 = i/2 b12 CdagQ  + i/2 b22 CdagQ2 - i/6 Tr(Q2) b22 C
+    * A2 = i/2 b12 M1 + i/2 b22 M2 - i/(2N) Tr(Q2) b22 Th
     */
    SuN A2;
-   equal_SuN(&A2, &CdagQ);
+   equal_SuN(&A2, &M1);
    times_equal_complex_SuN(&A2, I2 * exp_coeffs->b12);
 
-   equal_SuN(&tmp, &CdagQ2);
+   equal_SuN(&tmp, &M2);
    times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b22);
    plus_equal_SuN(&A2, &tmp);
 
-   equal_SuN(&tmp, &Cdag);
+   equal_SuN(&tmp, &Th);
    times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b22);
    plus_equal_SuN(&A2, &tmp);
 
@@ -1935,43 +1971,27 @@ complex double stout_smearing_detjacobian(taexp_Su3_coeffs const * const restric
    plus_equal_TensProd(&jacobian, &TP);
 
    /*
-    * Same determinant routine as before.
+    * + i/2 f1 (Om otimes I)
     */
+   otimes_SuN(&TP, &Om, &identity);
+   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f1);
+   plus_equal_TensProd(&jacobian, &TP);
+
+   /*
+    * + i/2 f2 (QOm otimes I)
+    */
+   otimes_SuN(&TP, &QOm, &identity);
+   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f2);
+   plus_equal_TensProd(&jacobian, &TP);
+
+   /*
+    * + i/2 f2 (Om otimes UdagQL)
+    */
+   otimes_SuN(&TP, &Om, &UdagQL);
+   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f2);
+   plus_equal_TensProd(&jacobian, &TP);
+
    return det_TensProd(&jacobian);
-
-   // // useful tensors (maybe)
-   // TensProd otimes_idid; one_TensProd(&otimes_idid);
-   // TensProd oplus_idid; zero_TensProd(&oplus_idid);
-   // for (int i = 0; i < NCOLOR; i++) {
-   //    for (int j = 0; j < NCOLOR; j++) {
-   //       oplus_idid.comp[i][j][j][i] = 1. + I*0;
-   //    }
-   // }
-
-   // // d Q / d Omega
-   // TensProd dQdOmega, aux_TP;
-   // equal_TensProd(&dQdOmega, &otimes_idid);
-   // times_equal_complex_TensProd(&dQdOmega, -0.5*I);
-   // equal_TensProd(&aux_TP, &oplus_idid);
-   // times_equal_complex_TensProd(&aux_TP, +0.5*I / (double) NCOLOR);
-   // plus_equal_TensProd(&dQdOmega, &aux_TP);
-   // // dQdOmega = 0.5 I / NCOLOR * (Id oplus Id) - 0.5 I (Id otimes Id)
-
-   // // d Omega / d U
-   // SuN identity; one(&identity);
-   // SuN aux_mtr; equal_dag(&aux_mtr, C); times_equal_real(&aux_mtr, -1);
-   // TensProd dOmegadU; otimes_SuN(&dOmegadU, &identity, &aux_mtr);
-   // // dOmegadU = Id otimes (-C^dagger)
-
-   // TensProd dQ_dU; star_TensProd(&dQ_dU, &dQdOmega, &dOmegadU);
-   // TensProd dexpQdU; star_TensProd(&dexpQdU, expderiv, &dQ_dU);
-
-   // TensProd jacobian; times_rightSuN_TensProd(&jacobian, &dexpQdU, link);
-   // times_leftSuN_TensProd(&aux_TP, expQ, &otimes_idid);
-   // plus_equal_TensProd(&jacobian, &aux_TP);
-   // // jacobian = (dexpQdU dot link) + (expQ dot (Id otimes Id))
-
-   // return det_TensProd(&jacobian);
 }
 
 void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
@@ -2100,7 +2120,7 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
 		}
 	}
 
-	*logJ = 2.0 * dlogJ;
+	*logJ = dlogJ; // |det J| is the full Haar Jacobian, no factor 2 (see stout_smearing_detjacobian)
 }
 
 // perform a stout smearing step only on links around the defect
@@ -2165,7 +2185,7 @@ void defect_stout_smearing_update(Gauge_Conf * GC,
 		} 
 	}
 
-	*logJ = 2.0 * dlogJ;
+	*logJ = dlogJ; // |det J| is the full Haar Jacobian, no factor 2 (see stout_smearing_detjacobian)
 }
 
 // n step of ape smearing with parameter alpha
