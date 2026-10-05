@@ -26,7 +26,7 @@ if [ -d lib/.deps ]; then make clean; fi
 #./configure N_c=${NCOLORS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=cascadelake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta}
 
 # optimized configuration for Leonardo Booster (optimized compilation with Intel compiler on Intel Icelake processors)
-./configure N_c=${NCOLORS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=icelake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta}
+./configure N_c=${NCOLORS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=icelake-server -ip -ipo -diag-disable=10441' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta}
 
 # compile
 make ${compile_targets} # -j 18
