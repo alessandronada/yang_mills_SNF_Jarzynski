@@ -209,7 +209,7 @@ void print_template_input(void)
         fprintf(fp, "num_flow_between   1        #number of updates between the start of each evolution\n");
         fprintf(fp, "num_flow_steps   10         #steps in each out-of-equilibrium evolution\n");
         fprintf(fp, "num_flow_dmeas   10         #steps between measurements during an evolution (only in beta)\n");
-        fprintf(fp, "jar_beta_target     6.2    #target beta (only for evolutions in beta)\n");
+        fprintf(fp, "flow_beta_target    6.2    #target beta (only for evolutions in beta)\n");
         fprintf(fp, "\n");
         fprintf(fp, "# hierarchical update parameters\n");
         fprintf(fp, "# Ord:qer: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
