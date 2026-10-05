@@ -1794,6 +1794,29 @@ void anisotropic_stout_smearing_singlelink(Gauge_Conf const * const GC,
    unitarize(smeared_link);
 }
 
+// A = a X + b Y
+static inline void lincomb2_SuN(SuN * restrict A,
+                                double complex a, SuN const * const restrict X,
+                                double complex b, SuN const * const restrict Y)
+{
+   for(int i=0; i<NCOLOR*NCOLOR; i++)
+      {
+      A->comp[i] = a * X->comp[i] + b * Y->comp[i];
+      }
+}
+
+// A = a X + b Y + c Z
+static inline void lincomb3_SuN(SuN * restrict A,
+                                double complex a, SuN const * const restrict X,
+                                double complex b, SuN const * const restrict Y,
+                                double complex c, SuN const * const restrict Z)
+{
+   for(int i=0; i<NCOLOR*NCOLOR; i++)
+      {
+      A->comp[i] = a * X->comp[i] + b * Y->comp[i] + c * Z->comp[i];
+      }
+}
+
 /*
  * det of the 9x9 Jacobian dU'/dU of U' = exp(iQ) U, with Omega = C U^dagger and U^dagger -> U^{-1},
  * so that both Omega and Omega^dagger vary with U: |det J| is then the full Haar Jacobian and enters
@@ -1864,132 +1887,64 @@ complex double stout_smearing_detjacobian(taexp_Su3_coeffs const * const restric
    const double complex I2 = 0.5 * I;
    const double complex I6 = - (1.0 / 6.0) * I;
 
+   const double complex c1 = I2 * exp_coeffs->f1;
+   const double complex c2 = I2 * exp_coeffs->f2;
+
    /*
     * A0 = i/2 b10 M1 + i/2 b20 M2 - i/(2N) Tr(Q2) b20 Th - i/(2N) f1 Th
-    */
-   SuN A0;
-   equal_SuN(&A0, &M1);
-   times_equal_complex_SuN(&A0, I2 * exp_coeffs->b10);
-
-   SuN tmp;
-   equal_SuN(&tmp, &M2);
-   times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b20);
-   plus_equal_SuN(&A0, &tmp);
-
-   equal_SuN(&tmp, &Th);
-   times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b20);
-   plus_equal_SuN(&A0, &tmp);
-
-   equal_SuN(&tmp, &Th);
-   times_equal_complex_SuN(&tmp, I6 * exp_coeffs->f1);
-   plus_equal_SuN(&A0, &tmp);
-
-   /*
     * A1 = i/2 b11 M1 + i/2 b21 M2 - i/(2N) Tr(Q2) b21 Th - i/N f2 Th
-    */
-   SuN A1;
-   equal_SuN(&A1, &M1);
-   times_equal_complex_SuN(&A1, I2 * exp_coeffs->b11);
-
-   equal_SuN(&tmp, &M2);
-   times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b21);
-   plus_equal_SuN(&A1, &tmp);
-
-   equal_SuN(&tmp, &Th);
-   times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b21);
-   plus_equal_SuN(&A1, &tmp);
-
-   equal_SuN(&tmp, &Th);
-   times_equal_complex_SuN(&tmp, 2.0 * I6 * exp_coeffs->f2);
-   plus_equal_SuN(&A1, &tmp);
-
-   /*
     * A2 = i/2 b12 M1 + i/2 b22 M2 - i/(2N) Tr(Q2) b22 Th
     */
-   SuN A2;
-   equal_SuN(&A2, &M1);
-   times_equal_complex_SuN(&A2, I2 * exp_coeffs->b12);
-
-   equal_SuN(&tmp, &M2);
-   times_equal_complex_SuN(&tmp, I2 * exp_coeffs->b22);
-   plus_equal_SuN(&A2, &tmp);
-
-   equal_SuN(&tmp, &Th);
-   times_equal_complex_SuN(&tmp, I6 * trQ2 * exp_coeffs->b22);
-   plus_equal_SuN(&A2, &tmp);
+   SuN A0, A1, A2;
+   lincomb3_SuN(&A0, I2 * exp_coeffs->b10, &M1, I2 * exp_coeffs->b20, &M2,
+                I6 * (trQ2 * exp_coeffs->b20 + exp_coeffs->f1), &Th);
+   lincomb3_SuN(&A1, I2 * exp_coeffs->b11, &M1, I2 * exp_coeffs->b21, &M2,
+                I6 * (trQ2 * exp_coeffs->b21 + 2.0 * exp_coeffs->f2), &Th);
+   lincomb3_SuN(&A2, I2 * exp_coeffs->b12, &M1, I2 * exp_coeffs->b22, &M2,
+                I6 * trQ2 * exp_coeffs->b22, &Th);
 
    /*
-    * Assemble the 9x9 Jacobian.
-    * Start with
-    *      expQ otimes I
+    * Terms of the form X otimes 1 and 1 otimes X are collected in
+    *   E = e^{iQ} + i/2 f1 Om + i/2 f2 Q Om       (X otimes 1)
+    *   R = i/2 f1 C^dag U + i/2 f2 C^dag Q U      (1 otimes X)
+    * and c2 = i/2 f2 is absorbed in Q and Om for the two remaining otimes terms.
     */
-   SuN identity;
-   one_SuN(&identity);
+   SuN E, R, Qc, Omc;
+   lincomb3_SuN(&E, 1.0, expQ, c1, &Om, c2, &QOm);
+   lincomb2_SuN(&R, c1, &CdagL, c2, &CdagQL);
+   equal_SuN(&Qc, Q);
+   times_equal_complex_SuN(&Qc, c2);
+   equal_SuN(&Omc, &Om);
+   times_equal_complex_SuN(&Omc, c2);
 
+   /*
+    * Assemble the 9x9 Jacobian in a single pass, with (see oplus_SuN and otimes_SuN)
+    *   (A otimes B)^i_j^k_l = A^i_j B^k_l,   (A oplus B)^i_j^k_l = A^k_j B^i_l:
+    *
+    *   J = E x 1 + 1 x R + A0 (+) U + A1 (+) QU + A2 (+) Q^2 U + c2 (Q x C^dag U + Om x U^dag Q U)
+    */
    TensProd jacobian __attribute__((aligned(DOUBLE_ALIGN)));
-   otimes_SuN(&jacobian, expQ, &identity);
 
-   /*
-    * + A0 oplus L
-    */
-   TensProd TP __attribute__((aligned(DOUBLE_ALIGN)));
-
-   oplus_SuN(&TP, &A0, link);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + A1 oplus QL
-    */
-   oplus_SuN(&TP, &A1, &QL);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + A2 oplus Q2L
-    */
-   oplus_SuN(&TP, &A2, &Q2L);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f1 (I otimes CdagL)
-    */
-   otimes_SuN(&TP, &identity, &CdagL);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f1);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f2 (Q otimes CdagL)
-    */
-   otimes_SuN(&TP, Q, &CdagL);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f2);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f2 (I otimes CdagQL)
-    */
-   otimes_SuN(&TP, &identity, &CdagQL);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f2);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f1 (Om otimes I)
-    */
-   otimes_SuN(&TP, &Om, &identity);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f1);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f2 (QOm otimes I)
-    */
-   otimes_SuN(&TP, &QOm, &identity);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f2);
-   plus_equal_TensProd(&jacobian, &TP);
-
-   /*
-    * + i/2 f2 (Om otimes UdagQL)
-    */
-   otimes_SuN(&TP, &Om, &UdagQL);
-   times_equal_complex_TensProd(&TP, I2 * exp_coeffs->f2);
-   plus_equal_TensProd(&jacobian, &TP);
+   for(int i=0; i<NCOLOR; i++)
+      {
+      for(int j=0; j<NCOLOR; j++)
+         {
+         for(int k=0; k<NCOLOR; k++)
+            {
+            for(int l=0; l<NCOLOR; l++)
+               {
+               double complex aux_jac = A0.comp[m(k,j)] * link->comp[m(i,l)]
+                                       + A1.comp[m(k,j)] * QL.comp[m(i,l)]
+                                       + A2.comp[m(k,j)] * Q2L.comp[m(i,l)]
+                                       + Qc.comp[m(i,j)] * CdagL.comp[m(k,l)]
+                                       + Omc.comp[m(i,j)] * UdagQL.comp[m(k,l)];
+               if(k==l) aux_jac += E.comp[m(i,j)];
+               if(i==j) aux_jac += R.comp[m(k,l)];
+               jacobian.comp[i][j][k][l] = aux_jac;
+               }
+            }
+         }
+      }
 
    return det_TensProd(&jacobian);
 }

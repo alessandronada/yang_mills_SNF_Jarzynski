@@ -6,6 +6,7 @@
 #include"../include/tens_prod.h"
 
 #include<complex.h>
+#include<math.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -46,62 +47,96 @@ void times_equal_TensProd(TensProd *A, TensProd const * const B);
 double retr_TensProd(TensProd const * const A);
 double imtr_TensProd(TensProd const * const A);
 
-#define mTensorProd(i, j) i % NCOLOR][j % NCOLOR][j / NCOLOR][i / NCOLOR
-void LU_TensProd(TensProd const * const restrict TP, TensProd * restrict result, int * restrict sign)
-{
-   equal_TensProd(result, TP);
-   *sign = 1;
-   const int dim_TP = NCOLOR * NCOLOR;
-   double vector[dim_TP]; 
+// |Re z| + |Im z|: equivalent to |z| up to a factor sqrt(2), without the sqrt, to choose pivots
+static inline double abs1_complex(double complex z)
+  {
+  return fabs(creal(z))+fabs(cimag(z));
+  }
 
-   for (int i = 0; i < dim_TP; i++) {
-      double big = 0.;
-      for (int j = 0; j < dim_TP; j++) {
-         double temp = cabs(TP->comp[mTensorProd(i, j)]);
-         if (temp > big) big = temp;
-      }
-      vector[i] = 1. / big;
-   }
-   for (int j = 0; j < dim_TP; j++) {
-      for (int i = 0; i < j; i++) {
-         complex double sum = result->comp[mTensorProd(i, j)];
-         for (int k = 0; k < i; k++) {
-            sum -= result->comp[mTensorProd(i, k)] * result->comp[mTensorProd(k, j)];
-         }
-         result->comp[mTensorProd(i, j)] = sum;
-      }
-      double big = 0;
-      int imax = 0;
-      for (int i = j; i < dim_TP; i++) {
-         complex double sum = result->comp[mTensorProd(i, j)];
-         for (int k = 0; k < j; k++) {
-            sum -= result->comp[mTensorProd(i, k)] * result->comp[mTensorProd(k, j)];
-         }
-         result->comp[mTensorProd(i, j)] = sum;
 
-         double temp = vector[i] * cabs(sum);
-         if (temp > big){
-             big = temp;
-             imax = i;
-         }
-      }
-      if (j != imax) {
-         for (int k = 0; k < dim_TP; k++) {
-            complex double temp = result->comp[mTensorProd(imax, k)];
-            result->comp[mTensorProd(imax, k)] = result->comp[mTensorProd(j, k)];
-            result->comp[mTensorProd(j, k)] = temp;
-         }
-         *sign *= -1;
-         vector[imax] = vector[j];
-      }
-      if (j != dim_TP - 1) {
-         complex double temp = (1. + I*0.) / (result->comp[mTensorProd(j, j)]);
-         for (int i = j + 1; i < dim_TP; i++) {
-            result->comp[mTensorProd(i, j)] *= temp;
-         }
-      }
-   }
-}
+// determinant of TP as a NCOLOR^2 x NCOLOR^2 matrix with row index (i0, i3) and column index (i1, i2),
+// so that one_TensProd is the identity: Gaussian elimination with scaled partial pivoting on a
+// contiguous copy, det = (-1)^(row swaps) * product of the pivots
+complex double det_TensProd(TensProd const * const TP)
+  {
+  #ifdef __INTEL_COMPILER
+  __assume_aligned(&(TP->comp), DOUBLE_ALIGN);
+  #endif
+
+  double complex a[NCOLOR*NCOLOR][NCOLOR*NCOLOR] __attribute__((aligned(DOUBLE_ALIGN)));
+  double scale[NCOLOR*NCOLOR];
+  double complex det=1.0;
+  int i0, i1, i2, i3, row, col, k;
+
+  for(i0=0; i0<NCOLOR; i0++)
+     {
+     for(i1=0; i1<NCOLOR; i1++)
+        {
+        for(i2=0; i2<NCOLOR; i2++)
+           {
+           for(i3=0; i3<NCOLOR; i3++)
+              {
+              a[i0+NCOLOR*i3][i1+NCOLOR*i2]=TP->comp[i0][i1][i2][i3];
+              }
+           }
+        }
+     }
+
+  // implicit row scaling: a pivot is compared relative to the largest element of its row
+  for(row=0; row<NCOLOR*NCOLOR; row++)
+     {
+     double big=0.0;
+     for(col=0; col<NCOLOR*NCOLOR; col++)
+        {
+        double tmp=abs1_complex(a[row][col]);
+        if(tmp>big) big=tmp;
+        }
+     if(big==0.0) return 0.0;  // null row
+     scale[row]=1.0/big;
+     }
+
+  for(col=0; col<NCOLOR*NCOLOR; col++)
+     {
+     int piv=col;
+     double big=scale[col]*abs1_complex(a[col][col]);
+     for(row=col+1; row<NCOLOR*NCOLOR; row++)
+        {
+        double tmp=scale[row]*abs1_complex(a[row][col]);
+        if(tmp>big)
+          {
+          big=tmp;
+          piv=row;
+          }
+        }
+     if(big==0.0) return 0.0;  // singular
+
+     if(piv!=col)  // columns < col are no longer needed
+       {
+       for(k=col; k<NCOLOR*NCOLOR; k++)
+          {
+          double complex tmp=a[piv][k];
+          a[piv][k]=a[col][k];
+          a[col][k]=tmp;
+          }
+       scale[piv]=scale[col];
+       det=-det;
+       }
+
+     det*=a[col][col];
+
+     const double complex inv_piv=1.0/a[col][col];
+     for(row=col+1; row<NCOLOR*NCOLOR; row++)
+        {
+        const double complex factor=a[row][col]*inv_piv;
+        for(k=col+1; k<NCOLOR*NCOLOR; k++)
+           {
+           a[row][k]-=factor*a[col][k];
+           }
+        }
+     }
+
+  return det;
+  }
 
 void print_on_screen_TensProd(TensProd const * const A)
   {
