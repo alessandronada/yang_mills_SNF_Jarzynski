@@ -1975,14 +1975,14 @@ void isotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    times_dag2(&expQ, &staple, link); // "expQ" is Omega = C U^dagger
    taexp_Su3_withcoeffs(&expQ, &Q, &Q2, &exp_coeffs); // "expQ" is exp(iQ) = exp(ta(Omega))
 
-   equal(&link_buff, &expQ); 
-   times_equal(&link_buff, link); // link = exp(i Q(Omega)) * link
+   times(&link_buff, &expQ, link); // link = exp(i Q(Omega)) * link
    unitarize(&link_buff); // just correct numerical error
 
    complex double detJ = stout_smearing_detjacobian(&exp_coeffs, &Q, &Q2, &expQ, &staple, link);
 
    *abs_detJ = cabs(detJ);
-   equal(smeared_link, &link_buff); // no problems if smeared link in GC
+   // smeared_link may be the link itself (GC->lattice): overwrite it only after the Jacobian
+   equal(smeared_link, &link_buff);
 }
 
 void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
@@ -2018,14 +2018,14 @@ void anisotropic_stout_smearing_withjacobi(Gauge_Conf const * const GC,
    times_dag2(&expQ, &staple, link); // "expQ" is Omega = C U^dagger
    taexp_Su3_withcoeffs(&expQ, &Q, &Q2, &exp_coeffs); // "expQ" is exp(iQ) = exp(ta(Omega))
 
-   equal(&link_buff, &expQ);
-   times_equal(&link_buff, link); // link = exp(i Q(Omega)) * link
+   times(&link_buff, &expQ, link); // link = exp(i Q(Omega)) * link
    unitarize(&link_buff);
 
    complex double detJ = stout_smearing_detjacobian(&exp_coeffs, &Q, &Q2, &expQ, &staple, link);
 
    *abs_detJ = cabs(detJ);
-   equal(smeared_link, &link_buff); // no problems if smeared link in GC
+   // smeared_link may be the link itself (GC->lattice): overwrite it only after the Jacobian
+   equal(smeared_link, &link_buff);
 }
 
 // perform a stout smearing step
@@ -2055,10 +2055,8 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
         #endif 
 		for (r = 0; r < (param->d_volume) / 2; r++)
 		{
-			GAUGE_GROUP smeared_link;
 			double abs_detJ;
-			isotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho, &smeared_link, &abs_detJ);
-			equal(&(GC->lattice[r][dir]), &smeared_link);
+			isotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho, &(GC->lattice[r][dir]), &abs_detJ);
 			dlogJ += log(abs_detJ);
 		}
 
@@ -2067,10 +2065,8 @@ void isotropic_stout_smearing_update(Gauge_Conf * GC,
         #endif 
 		for (r = (param->d_volume) / 2; r < (param->d_volume); r++)
 		{
-			GAUGE_GROUP smeared_link;
 			double abs_detJ;
-			isotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho, &smeared_link, &abs_detJ);
-			equal(&(GC->lattice[r][dir]), &smeared_link);
+			isotropic_stout_smearing_withjacobi(GC, geo, param, r, dir, rho, &(GC->lattice[r][dir]), &abs_detJ);
 			dlogJ += log(abs_detJ);
 		}
 	}
@@ -2116,11 +2112,9 @@ void defect_stout_smearing_update(Gauge_Conf * GC,
 		{
 			// s = site index on rectangle
 			long r = defect_rect->rect_sites[s]; // r = site index on lattice
-			GAUGE_GROUP smeared_link;
 			double abs_detJ;
          long rho_index = 2*(STDIM-1)*((defect_rect->d_vol_rect)*dir + s); // rho size is 2*(STDIM-1)*STDIM*VOL_DEF
-			anisotropic_stout_smearing_withjacobi(GC, geo, r, dir, rho + rho_index, &smeared_link, &abs_detJ);
-			equal(&(GC->lattice[r][dir]), &smeared_link);
+			anisotropic_stout_smearing_withjacobi(GC, geo, r, dir, rho + rho_index, &(GC->lattice[r][dir]), &abs_detJ);
 			dlogJ += log(abs_detJ);
 		}
 
@@ -2131,11 +2125,9 @@ void defect_stout_smearing_update(Gauge_Conf * GC,
 		{
 			// s = site index on rectangle
 			long r = defect_rect->rect_sites[s]; // r = site index on lattice
-			GAUGE_GROUP smeared_link;
 			double abs_detJ;
          long rho_index = 2*(STDIM-1)*((defect_rect->d_vol_rect)*dir + s); // rho size is 2*(STDIM-1)*STDIM*VOL_DEF
-			anisotropic_stout_smearing_withjacobi(GC, geo, r, dir, rho + rho_index, &smeared_link, &abs_detJ);
-			equal(&(GC->lattice[r][dir]), &smeared_link);
+			anisotropic_stout_smearing_withjacobi(GC, geo, r, dir, rho + rho_index, &(GC->lattice[r][dir]), &abs_detJ);
 			dlogJ += log(abs_detJ);
 		} 
 	}
