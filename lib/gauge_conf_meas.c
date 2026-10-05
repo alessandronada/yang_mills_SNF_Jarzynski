@@ -1041,6 +1041,7 @@ void perform_measures_localobs(Gauge_Conf *GC,
 				(void) chiprimefilep;
 			}
 		 free(meanplaq);
+		 if (param->d_topcharge_tprof_meas == 1) free(sum_q_timeslices);
 
    #else
 
