@@ -387,6 +387,10 @@ void taexp_Su3_withderiv(SuN * A, TensProd * deriv);
 // eponential of the traceless antihermitian part specifically for SU(3)
 void taexp_Su3(SuN *A);
 
+// exponential of the traceless antihermitian part for SU(3), also returning Q, Q^2 and the
+// coefficients used by the stout-smearing Jacobian
+void taexp_Su3_withcoeffs(SuN * restrict A, SuN * restrict Q, SuN * restrict Q2, taexp_Su3_coeffs * restrict coeffs);
+
 // return 0 if matrix is traceless antihermitian, 1 otherwise
 int ta_check_SuN(const SuN * const A);
 
