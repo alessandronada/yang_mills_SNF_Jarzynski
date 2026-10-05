@@ -95,8 +95,12 @@ bin_PROGRAMS = conf_check$(EXEEXT) debug_rng$(EXEEXT) \
 	yang_mills_tube_conn_long$(EXEEXT) \
 	yang_mills_tube_disc$(EXEEXT) yang_mills_tracedef$(EXEEXT) \
 	yang_mills_local_pt$(EXEEXT) \
+	yang_mills_local_jarzynski_bc$(EXEEXT) \
+	yang_mills_local_jarzynski_beta$(EXEEXT) \
+	yang_mills_local_snf_beta$(EXEEXT) \
+	yang_mills_local_snf_bc$(EXEEXT) \
 	yang_mills_local_pt_multicanonic$(EXEEXT) \
-	yang_mills_gradient_flow$(EXEEXT)
+	yang_mills_gradient_flow$(EXEEXT) test_stout_smearing$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -162,6 +166,13 @@ am__objects_10 = ./lib/gauge_conf_def.$(OBJEXT) \
 am__objects_11 = ./lib/geometry.$(OBJEXT)
 am__objects_12 = ./lib/tens_prod.$(OBJEXT) \
 	./lib/tens_prod_adj.$(OBJEXT)
+am_test_stout_smearing_OBJECTS = ./src/test_stout_smearing.$(OBJEXT) \
+	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
+	$(am__objects_4) $(am__objects_10) $(am__objects_11) \
+	$(am__objects_5) $(am__objects_6) $(am__objects_7) \
+	$(am__objects_8) $(am__objects_12) $(am__objects_9)
+test_stout_smearing_OBJECTS = $(am_test_stout_smearing_OBJECTS)
+test_stout_smearing_LDADD = $(LDADD)
 am_yang_mills_gradient_flow_OBJECTS =  \
 	./src/yang_mills_gradient_flow.$(OBJEXT) $(am__objects_1) \
 	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
@@ -178,6 +189,24 @@ am_yang_mills_local_OBJECTS = ./src/yang_mills_local.$(OBJEXT) \
 	$(am__objects_8) $(am__objects_12) $(am__objects_9)
 yang_mills_local_OBJECTS = $(am_yang_mills_local_OBJECTS)
 yang_mills_local_LDADD = $(LDADD)
+am_yang_mills_local_jarzynski_bc_OBJECTS =  \
+	./src/yang_mills_local_jarzynski_bc.$(OBJEXT) $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
+	$(am__objects_10) $(am__objects_11) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_7) $(am__objects_8) \
+	$(am__objects_12) $(am__objects_9)
+yang_mills_local_jarzynski_bc_OBJECTS =  \
+	$(am_yang_mills_local_jarzynski_bc_OBJECTS)
+yang_mills_local_jarzynski_bc_LDADD = $(LDADD)
+am_yang_mills_local_jarzynski_beta_OBJECTS =  \
+	./src/yang_mills_local_jarzynski_beta.$(OBJEXT) \
+	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
+	$(am__objects_4) $(am__objects_10) $(am__objects_11) \
+	$(am__objects_5) $(am__objects_6) $(am__objects_7) \
+	$(am__objects_8) $(am__objects_12) $(am__objects_9)
+yang_mills_local_jarzynski_beta_OBJECTS =  \
+	$(am_yang_mills_local_jarzynski_beta_OBJECTS)
+yang_mills_local_jarzynski_beta_LDADD = $(LDADD)
 am_yang_mills_local_pt_OBJECTS = ./src/yang_mills_local_pt.$(OBJEXT) \
 	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
 	$(am__objects_4) $(am__objects_10) $(am__objects_11) \
@@ -194,6 +223,24 @@ am_yang_mills_local_pt_multicanonic_OBJECTS =  \
 yang_mills_local_pt_multicanonic_OBJECTS =  \
 	$(am_yang_mills_local_pt_multicanonic_OBJECTS)
 yang_mills_local_pt_multicanonic_LDADD = $(LDADD)
+am_yang_mills_local_snf_bc_OBJECTS =  \
+	./src/yang_mills_local_snf_bc.$(OBJEXT) $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
+	$(am__objects_10) $(am__objects_11) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_7) $(am__objects_8) \
+	$(am__objects_12) $(am__objects_9)
+yang_mills_local_snf_bc_OBJECTS =  \
+	$(am_yang_mills_local_snf_bc_OBJECTS)
+yang_mills_local_snf_bc_LDADD = $(LDADD)
+am_yang_mills_local_snf_beta_OBJECTS =  \
+	./src/yang_mills_local_snf_beta.$(OBJEXT) $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
+	$(am__objects_10) $(am__objects_11) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_7) $(am__objects_8) \
+	$(am__objects_12) $(am__objects_9)
+yang_mills_local_snf_beta_OBJECTS =  \
+	$(am_yang_mills_local_snf_beta_OBJECTS)
+yang_mills_local_snf_beta_LDADD = $(LDADD)
 am_yang_mills_polycorr_OBJECTS = ./src/yang_mills_polycorr.$(OBJEXT) \
 	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
 	$(am__objects_4) $(am__objects_10) $(am__objects_11) \
@@ -288,9 +335,15 @@ am__v_CCLD_1 =
 SOURCES = $(conf_check_SOURCES) $(debug_rng_SOURCES) \
 	$(debug_su2_SOURCES) $(debug_su2_adj_SOURCES) \
 	$(debug_sun_SOURCES) $(debug_u1_SOURCES) \
+	$(test_stout_smearing_SOURCES) \
 	$(yang_mills_gradient_flow_SOURCES) \
-	$(yang_mills_local_SOURCES) $(yang_mills_local_pt_SOURCES) \
+	$(yang_mills_local_SOURCES) \
+	$(yang_mills_local_jarzynski_bc_SOURCES) \
+	$(yang_mills_local_jarzynski_beta_SOURCES) \
+	$(yang_mills_local_pt_SOURCES) \
 	$(yang_mills_local_pt_multicanonic_SOURCES) \
+	$(yang_mills_local_snf_bc_SOURCES) \
+	$(yang_mills_local_snf_beta_SOURCES) \
 	$(yang_mills_polycorr_SOURCES) \
 	$(yang_mills_polycorr_long_SOURCES) \
 	$(yang_mills_polycorradj_SOURCES) $(yang_mills_t0_SOURCES) \
@@ -300,9 +353,15 @@ SOURCES = $(conf_check_SOURCES) $(debug_rng_SOURCES) \
 DIST_SOURCES = $(conf_check_SOURCES) $(debug_rng_SOURCES) \
 	$(debug_su2_SOURCES) $(debug_su2_adj_SOURCES) \
 	$(debug_sun_SOURCES) $(debug_u1_SOURCES) \
+	$(test_stout_smearing_SOURCES) \
 	$(yang_mills_gradient_flow_SOURCES) \
-	$(yang_mills_local_SOURCES) $(yang_mills_local_pt_SOURCES) \
+	$(yang_mills_local_SOURCES) \
+	$(yang_mills_local_jarzynski_bc_SOURCES) \
+	$(yang_mills_local_jarzynski_beta_SOURCES) \
+	$(yang_mills_local_pt_SOURCES) \
 	$(yang_mills_local_pt_multicanonic_SOURCES) \
+	$(yang_mills_local_snf_bc_SOURCES) \
+	$(yang_mills_local_snf_beta_SOURCES) \
 	$(yang_mills_polycorr_SOURCES) \
 	$(yang_mills_polycorr_long_SOURCES) \
 	$(yang_mills_polycorradj_SOURCES) $(yang_mills_t0_SOURCES) \
@@ -366,7 +425,6 @@ AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -374,9 +432,7 @@ DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
-EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -566,6 +622,21 @@ debug_u1_SOURCES = ./src/debug_u1.c \
                   $(random) \
                   $(u1)
 
+test_stout_smearing_SOURCES = ./src/test_stout_smearing.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1) 
+
 yang_mills_local_SOURCES = ./src/yang_mills_local.c \
                           $(align) \
                           $(dSFMT)  \
@@ -702,6 +773,66 @@ yang_mills_tracedef_SOURCES = ./src/yang_mills_tracedef.c \
                             $(u1) 
 
 yang_mills_local_pt_SOURCES = ./src/yang_mills_local_pt.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_jarzynski_bc_SOURCES = ./src/yang_mills_local_jarzynski_bc.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_jarzynski_beta_SOURCES = ./src/yang_mills_local_jarzynski_beta.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_snf_beta_SOURCES = ./src/yang_mills_local_snf_beta.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_snf_bc_SOURCES = ./src/yang_mills_local_snf_bc.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -914,7 +1045,7 @@ debug_sun$(EXEEXT): $(debug_sun_OBJECTS) $(debug_sun_DEPENDENCIES) $(EXTRA_debug
 debug_u1$(EXEEXT): $(debug_u1_OBJECTS) $(debug_u1_DEPENDENCIES) $(EXTRA_debug_u1_DEPENDENCIES) 
 	@rm -f debug_u1$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(debug_u1_OBJECTS) $(debug_u1_LDADD) $(LIBS)
-./src/yang_mills_gradient_flow.$(OBJEXT): src/$(am__dirstamp) \
+./src/test_stout_smearing.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 ./lib/gauge_conf_def.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
@@ -935,6 +1066,12 @@ debug_u1$(EXEEXT): $(debug_u1_OBJECTS) $(debug_u1_DEPENDENCIES) $(EXTRA_debug_u1
 ./lib/tens_prod_adj.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
 
+test_stout_smearing$(EXEEXT): $(test_stout_smearing_OBJECTS) $(test_stout_smearing_DEPENDENCIES) $(EXTRA_test_stout_smearing_DEPENDENCIES) 
+	@rm -f test_stout_smearing$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(test_stout_smearing_OBJECTS) $(test_stout_smearing_LDADD) $(LIBS)
+./src/yang_mills_gradient_flow.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+
 yang_mills_gradient_flow$(EXEEXT): $(yang_mills_gradient_flow_OBJECTS) $(yang_mills_gradient_flow_DEPENDENCIES) $(EXTRA_yang_mills_gradient_flow_DEPENDENCIES) 
 	@rm -f yang_mills_gradient_flow$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(yang_mills_gradient_flow_OBJECTS) $(yang_mills_gradient_flow_LDADD) $(LIBS)
@@ -944,6 +1081,18 @@ yang_mills_gradient_flow$(EXEEXT): $(yang_mills_gradient_flow_OBJECTS) $(yang_mi
 yang_mills_local$(EXEEXT): $(yang_mills_local_OBJECTS) $(yang_mills_local_DEPENDENCIES) $(EXTRA_yang_mills_local_DEPENDENCIES) 
 	@rm -f yang_mills_local$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(yang_mills_local_OBJECTS) $(yang_mills_local_LDADD) $(LIBS)
+./src/yang_mills_local_jarzynski_bc.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+
+yang_mills_local_jarzynski_bc$(EXEEXT): $(yang_mills_local_jarzynski_bc_OBJECTS) $(yang_mills_local_jarzynski_bc_DEPENDENCIES) $(EXTRA_yang_mills_local_jarzynski_bc_DEPENDENCIES) 
+	@rm -f yang_mills_local_jarzynski_bc$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(yang_mills_local_jarzynski_bc_OBJECTS) $(yang_mills_local_jarzynski_bc_LDADD) $(LIBS)
+./src/yang_mills_local_jarzynski_beta.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+
+yang_mills_local_jarzynski_beta$(EXEEXT): $(yang_mills_local_jarzynski_beta_OBJECTS) $(yang_mills_local_jarzynski_beta_DEPENDENCIES) $(EXTRA_yang_mills_local_jarzynski_beta_DEPENDENCIES) 
+	@rm -f yang_mills_local_jarzynski_beta$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(yang_mills_local_jarzynski_beta_OBJECTS) $(yang_mills_local_jarzynski_beta_LDADD) $(LIBS)
 ./src/yang_mills_local_pt.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 
@@ -956,6 +1105,18 @@ yang_mills_local_pt$(EXEEXT): $(yang_mills_local_pt_OBJECTS) $(yang_mills_local_
 yang_mills_local_pt_multicanonic$(EXEEXT): $(yang_mills_local_pt_multicanonic_OBJECTS) $(yang_mills_local_pt_multicanonic_DEPENDENCIES) $(EXTRA_yang_mills_local_pt_multicanonic_DEPENDENCIES) 
 	@rm -f yang_mills_local_pt_multicanonic$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(yang_mills_local_pt_multicanonic_OBJECTS) $(yang_mills_local_pt_multicanonic_LDADD) $(LIBS)
+./src/yang_mills_local_snf_bc.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+
+yang_mills_local_snf_bc$(EXEEXT): $(yang_mills_local_snf_bc_OBJECTS) $(yang_mills_local_snf_bc_DEPENDENCIES) $(EXTRA_yang_mills_local_snf_bc_DEPENDENCIES) 
+	@rm -f yang_mills_local_snf_bc$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(yang_mills_local_snf_bc_OBJECTS) $(yang_mills_local_snf_bc_LDADD) $(LIBS)
+./src/yang_mills_local_snf_beta.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+
+yang_mills_local_snf_beta$(EXEEXT): $(yang_mills_local_snf_beta_OBJECTS) $(yang_mills_local_snf_beta_DEPENDENCIES) $(EXTRA_yang_mills_local_snf_beta_DEPENDENCIES) 
+	@rm -f yang_mills_local_snf_beta$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(yang_mills_local_snf_beta_OBJECTS) $(yang_mills_local_snf_beta_LDADD) $(LIBS)
 ./src/yang_mills_polycorr.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 
@@ -1041,10 +1202,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/debug_su2_adj.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/debug_sun.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/debug_u1.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/test_stout_smearing.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_gradient_flow.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_jarzynski_bc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_jarzynski_beta.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_pt.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_pt_multicanonic.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_snf_bc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_snf_beta.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_polycorr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_polycorr_long.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_polycorradj.Po@am__quote@
