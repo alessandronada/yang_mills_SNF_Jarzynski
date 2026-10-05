@@ -20,14 +20,15 @@ typedef struct Rectangle {
 
 
 // these are the functions to be used in shwitching between different indices
-long (*cart_to_si)(int const * const cartcoord, GParam const * const param); // cartesian coordinates -> single index
-void (*si_to_cart)(int *cartcoord, long si, GParam const * const param);     // single index -> cartesian coordinates
-long (*lex_to_si)(long lex, GParam const * const param);          // lexicographic -> single index
-long (*si_to_lex)(long si, GParam const * const param);           // lexicographic -> single index
-long (*sisp_and_t_to_si_compute)(long sisp, int t, GParam const * const param);            // single index spatial and time -> single index tot
-void (*si_to_sisp_and_t_compute)(long *sisp, int *t, long si, GParam const * const param); // single index tot -> single index spatial and time
+// (declarations only: defined in lib/geometry.c, set by init_indexing_lexeo)
+extern long (*cart_to_si)(int const * const cartcoord, GParam const * const param); // cartesian coordinates -> single index
+extern void (*si_to_cart)(int *cartcoord, long si, GParam const * const param);     // single index -> cartesian coordinates
+extern long (*lex_to_si)(long lex, GParam const * const param);          // lexicographic -> single index
+extern long (*si_to_lex)(long si, GParam const * const param);           // lexicographic -> single index
+extern long (*sisp_and_t_to_si_compute)(long sisp, int t, GParam const * const param);            // single index spatial and time -> single index tot
+extern void (*si_to_sisp_and_t_compute)(long *sisp, int *t, long si, GParam const * const param); // single index tot -> single index spatial and time
 
-long (*cart_to_si_rect)(int const * const cartcoord, Rectangle const * const most_update); // cartesian -> single index on rectangles
+extern long (*cart_to_si_rect)(int const * const cartcoord, Rectangle const * const most_update); // cartesian -> single index on rectangles
 
 // general functions
 void init_indexing_lexeo(void); // has to be called before init_geometry

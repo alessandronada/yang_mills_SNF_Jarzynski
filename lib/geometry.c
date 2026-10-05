@@ -9,6 +9,15 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 
+// the index functions declared in geometry.h (set by init_indexing_lexeo)
+long (*cart_to_si)(int const * const cartcoord, GParam const * const param);
+void (*si_to_cart)(int *cartcoord, long si, GParam const * const param);
+long (*lex_to_si)(long lex, GParam const * const param);
+long (*si_to_lex)(long si, GParam const * const param);
+long (*sisp_and_t_to_si_compute)(long sisp, int t, GParam const * const param);
+void (*si_to_sisp_and_t_compute)(long *sisp, int *t, long si, GParam const * const param);
+long (*cart_to_si_rect)(int const * const cartcoord, Rectangle const * const most_update);
+
 // single index 4d = even/odd lexicographic index 4d
 // single index 3d = even/odd lexicographic index 3d
 void init_indexing_lexeo(void)
