@@ -129,6 +129,18 @@ void readinput(char *in_file, GParam *param)
         }
       }
 
+      // beta_t before beta, matched exactly: "beta" compares only 4 characters and would also
+      // match "beta_t"
+      else if (strcmp(str, "beta_t") == 0)
+      {
+        err = fscanf(input, "%lf", &temp_d);
+        if (err != 1)
+        {
+          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+          exit(EXIT_FAILURE);
+        }
+        param->d_beta_t = temp_d;
+      }
       else if (strncmp(str, "beta", 4) == 0)
       {
         err = fscanf(input, "%lf", &temp_d);
@@ -139,7 +151,7 @@ void readinput(char *in_file, GParam *param)
         }
         param->d_beta = temp_d;
       }
-      
+
       else if (strncmp(str, "anisotropic", 11) == 0)
       {
         err = fscanf(input, "%d", &temp_i);
@@ -149,16 +161,6 @@ void readinput(char *in_file, GParam *param)
           exit(EXIT_FAILURE);
         }
         param->d_anisotropic = temp_i;
-      }
-      else if (strncmp(str, "bet_t", 5) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_beta_t = temp_d;
       }
 
       else if (strncmp(str, "htracedef", 9) == 0)
