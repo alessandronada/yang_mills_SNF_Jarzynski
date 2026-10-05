@@ -13,12 +13,10 @@ bin_PROGRAMS = conf_check \
                yang_mills_tube_conn_long \
                yang_mills_tube_disc \
                yang_mills_tracedef \
-               yang_mills_local_pt \
                yang_mills_local_jarzynski_bc \
                yang_mills_local_jarzynski_beta \
 	       yang_mills_local_snf_beta \
 	       yang_mills_local_snf_bc \
-               yang_mills_local_pt_multicanonic \
                yang_mills_gradient_flow \
                test_stout_smearing
 
@@ -289,21 +287,6 @@ yang_mills_tracedef_SOURCES=./src/yang_mills_tracedef.c \
                             $(tens_prod) \
                             $(u1) 
 
-yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
 yang_mills_local_jarzynski_bc_SOURCES=./src/yang_mills_local_jarzynski_bc.c \
                           $(align) \
                           $(dSFMT)  \
@@ -350,21 +333,6 @@ yang_mills_local_snf_beta_SOURCES=./src/yang_mills_local_snf_beta.c \
                           $(u1)
 
 yang_mills_local_snf_bc_SOURCES=./src/yang_mills_local_snf_bc.c \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
-yang_mills_local_pt_multicanonic_SOURCES=./src/yang_mills_local_pt_multicanonic.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \

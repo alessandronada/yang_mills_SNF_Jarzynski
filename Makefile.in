@@ -94,12 +94,10 @@ bin_PROGRAMS = conf_check$(EXEEXT) debug_rng$(EXEEXT) \
 	yang_mills_tube_conn$(EXEEXT) \
 	yang_mills_tube_conn_long$(EXEEXT) \
 	yang_mills_tube_disc$(EXEEXT) yang_mills_tracedef$(EXEEXT) \
-	yang_mills_local_pt$(EXEEXT) \
 	yang_mills_local_jarzynski_bc$(EXEEXT) \
 	yang_mills_local_jarzynski_beta$(EXEEXT) \
 	yang_mills_local_snf_beta$(EXEEXT) \
 	yang_mills_local_snf_bc$(EXEEXT) \
-	yang_mills_local_pt_multicanonic$(EXEEXT) \
 	yang_mills_gradient_flow$(EXEEXT) test_stout_smearing$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -207,22 +205,6 @@ am_yang_mills_local_jarzynski_beta_OBJECTS =  \
 yang_mills_local_jarzynski_beta_OBJECTS =  \
 	$(am_yang_mills_local_jarzynski_beta_OBJECTS)
 yang_mills_local_jarzynski_beta_LDADD = $(LDADD)
-am_yang_mills_local_pt_OBJECTS = ./src/yang_mills_local_pt.$(OBJEXT) \
-	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
-	$(am__objects_4) $(am__objects_10) $(am__objects_11) \
-	$(am__objects_5) $(am__objects_6) $(am__objects_7) \
-	$(am__objects_8) $(am__objects_12) $(am__objects_9)
-yang_mills_local_pt_OBJECTS = $(am_yang_mills_local_pt_OBJECTS)
-yang_mills_local_pt_LDADD = $(LDADD)
-am_yang_mills_local_pt_multicanonic_OBJECTS =  \
-	./src/yang_mills_local_pt_multicanonic.$(OBJEXT) \
-	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
-	$(am__objects_4) $(am__objects_10) $(am__objects_11) \
-	$(am__objects_5) $(am__objects_6) $(am__objects_7) \
-	$(am__objects_8) $(am__objects_12) $(am__objects_9)
-yang_mills_local_pt_multicanonic_OBJECTS =  \
-	$(am_yang_mills_local_pt_multicanonic_OBJECTS)
-yang_mills_local_pt_multicanonic_LDADD = $(LDADD)
 am_yang_mills_local_snf_bc_OBJECTS =  \
 	./src/yang_mills_local_snf_bc.$(OBJEXT) $(am__objects_1) \
 	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
@@ -340,8 +322,6 @@ SOURCES = $(conf_check_SOURCES) $(debug_rng_SOURCES) \
 	$(yang_mills_local_SOURCES) \
 	$(yang_mills_local_jarzynski_bc_SOURCES) \
 	$(yang_mills_local_jarzynski_beta_SOURCES) \
-	$(yang_mills_local_pt_SOURCES) \
-	$(yang_mills_local_pt_multicanonic_SOURCES) \
 	$(yang_mills_local_snf_bc_SOURCES) \
 	$(yang_mills_local_snf_beta_SOURCES) \
 	$(yang_mills_polycorr_SOURCES) \
@@ -358,8 +338,6 @@ DIST_SOURCES = $(conf_check_SOURCES) $(debug_rng_SOURCES) \
 	$(yang_mills_local_SOURCES) \
 	$(yang_mills_local_jarzynski_bc_SOURCES) \
 	$(yang_mills_local_jarzynski_beta_SOURCES) \
-	$(yang_mills_local_pt_SOURCES) \
-	$(yang_mills_local_pt_multicanonic_SOURCES) \
 	$(yang_mills_local_snf_bc_SOURCES) \
 	$(yang_mills_local_snf_beta_SOURCES) \
 	$(yang_mills_polycorr_SOURCES) \
@@ -772,21 +750,6 @@ yang_mills_tracedef_SOURCES = ./src/yang_mills_tracedef.c \
                             $(tens_prod) \
                             $(u1) 
 
-yang_mills_local_pt_SOURCES = ./src/yang_mills_local_pt.c \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
 yang_mills_local_jarzynski_bc_SOURCES = ./src/yang_mills_local_jarzynski_bc.c \
                           $(align) \
                           $(dSFMT)  \
@@ -833,21 +796,6 @@ yang_mills_local_snf_beta_SOURCES = ./src/yang_mills_local_snf_beta.c \
                           $(u1)
 
 yang_mills_local_snf_bc_SOURCES = ./src/yang_mills_local_snf_bc.c \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
-yang_mills_local_pt_multicanonic_SOURCES = ./src/yang_mills_local_pt_multicanonic.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -1093,18 +1041,6 @@ yang_mills_local_jarzynski_bc$(EXEEXT): $(yang_mills_local_jarzynski_bc_OBJECTS)
 yang_mills_local_jarzynski_beta$(EXEEXT): $(yang_mills_local_jarzynski_beta_OBJECTS) $(yang_mills_local_jarzynski_beta_DEPENDENCIES) $(EXTRA_yang_mills_local_jarzynski_beta_DEPENDENCIES) 
 	@rm -f yang_mills_local_jarzynski_beta$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(yang_mills_local_jarzynski_beta_OBJECTS) $(yang_mills_local_jarzynski_beta_LDADD) $(LIBS)
-./src/yang_mills_local_pt.$(OBJEXT): src/$(am__dirstamp) \
-	src/$(DEPDIR)/$(am__dirstamp)
-
-yang_mills_local_pt$(EXEEXT): $(yang_mills_local_pt_OBJECTS) $(yang_mills_local_pt_DEPENDENCIES) $(EXTRA_yang_mills_local_pt_DEPENDENCIES) 
-	@rm -f yang_mills_local_pt$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(yang_mills_local_pt_OBJECTS) $(yang_mills_local_pt_LDADD) $(LIBS)
-./src/yang_mills_local_pt_multicanonic.$(OBJEXT): src/$(am__dirstamp) \
-	src/$(DEPDIR)/$(am__dirstamp)
-
-yang_mills_local_pt_multicanonic$(EXEEXT): $(yang_mills_local_pt_multicanonic_OBJECTS) $(yang_mills_local_pt_multicanonic_DEPENDENCIES) $(EXTRA_yang_mills_local_pt_multicanonic_DEPENDENCIES) 
-	@rm -f yang_mills_local_pt_multicanonic$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(yang_mills_local_pt_multicanonic_OBJECTS) $(yang_mills_local_pt_multicanonic_LDADD) $(LIBS)
 ./src/yang_mills_local_snf_bc.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 
@@ -1207,8 +1143,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_jarzynski_bc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_jarzynski_beta.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_pt.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_pt_multicanonic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_snf_bc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_local_snf_beta.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/yang_mills_polycorr.Po@am__quote@
