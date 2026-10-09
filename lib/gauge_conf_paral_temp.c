@@ -217,6 +217,42 @@ double compute_defect_action_all(Gauge_Conf const * const GC, Geometry const * c
 	return - param->d_beta * pl;
 }
 
+// Wilson action with the defect, -beta sum_P K_P ReTr(P)/N_c (without the constant), restricted to the
+// plaquettes P(r,i,j) with base site r in the rectangle box.
+// A step of a flow in the boundary conditions changes only the factors C of the defect links (sites of
+// init_rect with L_R = 0) and, with SNF, the links smeared around the defect (all directions, sites of
+// init_rect with L_R = 1). P(r,i,j) contains the links (r,i), (r+i,j), (r+j,i), (r,j), so the plaquettes
+// containing a link of site s have base site s, s-i or s-j: if the links changed are on the sites of
+// init_rect(L_R), box = init_rect(L_R+1) contains the base sites of all the plaquettes that change, and
+// S_box(after) - S_box(before) = S(after) - S(before) without summing over the whole lattice.
+double compute_local_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param,
+                            Rectangle const * const box)
+{
+	long s;
+	double pl = 0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+ : pl)
+	#endif
+	for (s = 0; s < box->d_vol_rect; s++)
+	{
+		long const r = box->rect_sites[s];
+		int i, j;
+
+		for (i = 0; i < STDIM; i++)
+		{
+			for (j = i + 1; j < STDIM; j++)
+			{
+				double const K = (GC->C[r][i]) * (GC->C[nnp(geo, r, i)][j]) * (GC->C[nnp(geo, r, j)][i]) * (GC->C[r][j]);
+
+				pl += K * plaquettep(GC, geo, param, r, i, j); // plaquettep = ReTr(P)/N_c
+			}
+		}
+	}
+
+	return - param->d_beta * pl;
+}
+
 // swaps are serial, evaluation of swap probability is parallelized (use this version of 'swap' if gcc_version < 6.0 or icc_version < 14.0)
 /*
 void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,

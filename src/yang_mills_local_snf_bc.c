@@ -23,7 +23,7 @@ void real_main(char *in_file)
     Gauge_Conf GC, GCstart;
     Geometry geo;
     GParam param;
-    Rectangle *most_update, *clover_rectangle, defect_rect;
+    Rectangle *most_update, *clover_rectangle, defect_rect, defect_sites, action_rect;
     double W = 0.0, act0 = 0.0, act1 = 0.0, logJ;
 
     //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
@@ -67,6 +67,10 @@ void real_main(char *in_file)
     init_rect_hierarc(&most_update, &clover_rectangle, &param);
     // initialize rectangle for defect smearing
     init_rect(&defect_rect, 1, &param);
+    // sites of the defect links, the only ones whose C changes during an evolution
+    init_rect(&defect_sites, 0, &param);
+    // base sites of all the plaquettes containing a smeared link (see compute_local_action)
+    init_rect(&action_rect, 2, &param);
 
     // initialize smearing parameters
     init_defect_smearing_parameter(&param, defect_rect.d_vol_rect);
@@ -85,7 +89,7 @@ void real_main(char *in_file)
     {
         W = 0.0;
 
-        set_bound_cond(&GC, &param, param.d_flow_bc_beta0);
+        set_defect_bound_cond(&GC, &param, &defect_sites, param.d_flow_bc_beta0);
 
         // updates between the start of each evolution
         for (rel = 0; rel < param.d_flow_between; rel++)
@@ -100,17 +104,17 @@ void real_main(char *in_file)
         // non-equilibrium evolution
         for (step = 0; step < param.d_flow_steps; step++)
         {
-            // compute S_C(i) (U_i)
-            act0 = compute_defect_action_all(&GC, &geo, &param);
+            // compute S_C(i) (U_i), on the plaquettes that change with the smearing and C only
+            act0 = compute_local_action(&GC, &geo, &param, &action_rect);
 
             // stout smearing step: U_i -> g_i(U_i)
             defect_stout_smearing_update(&GC, &geo, &param, &defect_rect, &logJ, param.d_SNF_rho + 2 * (STDIM - 1) * defect_rect.d_vol_rect * STDIM * step);
 
             // change BC: S_C(i) -> S_C(i+1)
-            set_bound_cond(&GC, &param, param.d_flow_protocol[step]);
+            set_defect_bound_cond(&GC, &param, &defect_sites, param.d_flow_protocol[step]);
 
             // compute S_C(i+1) (g_i(U_i))
-            act1 = compute_defect_action_all(&GC, &geo, &param);
+            act1 = compute_local_action(&GC, &geo, &param, &action_rect);
 
             // compute work step
             W += act1 - act0 - logJ;
@@ -181,6 +185,8 @@ void real_main(char *in_file)
     // free rectangles for hierarchical update
     free_rect_hierarc(most_update, clover_rectangle, &param);
     free_rect(&defect_rect);
+    free_rect(&defect_sites);
+    free_rect(&action_rect);
 
     // free hierarchical update parameters
     free_hierarc_params(&param);

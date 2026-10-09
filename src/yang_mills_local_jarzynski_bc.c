@@ -23,7 +23,7 @@ void real_main(char *in_file)
   Gauge_Conf GC, GCstart;
   Geometry geo;
   GParam param;
-  Rectangle *most_update, *clover_rectangle;
+  Rectangle *most_update, *clover_rectangle, defect_sites, action_rect;
   double W = 0.0, act0 = 0.0, act1 = 0.0;
 
   //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
@@ -65,6 +65,10 @@ void real_main(char *in_file)
 
   // initialize rectangles for hierarchical update
   init_rect_hierarc(&most_update, &clover_rectangle, &param);
+  // sites of the defect links, the only ones whose C changes during an evolution
+  init_rect(&defect_sites, 0, &param);
+  // base sites of all the plaquettes containing a defect link (see compute_local_action)
+  init_rect(&action_rect, 1, &param);
 
   // Monte Carlo begin
   time(&time1);
@@ -80,7 +84,7 @@ void real_main(char *in_file)
   {
     W = 0.0;
 
-    set_bound_cond(&GC, &param, param.d_flow_bc_beta0);
+    set_defect_bound_cond(&GC, &param, &defect_sites, param.d_flow_bc_beta0);
 
     // updates between the start of each evolution
     for (rel = 0; rel < param.d_flow_between; rel++)
@@ -95,14 +99,14 @@ void real_main(char *in_file)
     // non-equilibrium evolution
     for (step = 0; step < param.d_flow_steps; step++)
     {
-      // compute S_C(i) (U_i)
-      act0 = compute_defect_action(&GC, &geo, &param);
+      // compute S_C(i) (U_i), on the plaquettes that change with C only
+      act0 = compute_local_action(&GC, &geo, &param, &action_rect);
 
       // change BC: S_C(i) -> S_C(i+1)
-      set_bound_cond(&GC, &param, param.d_flow_protocol[step]);
+      set_defect_bound_cond(&GC, &param, &defect_sites, param.d_flow_protocol[step]);
 
       // compute S_C(i+1) (U_i)
-      act1 = compute_defect_action(&GC, &geo, &param);
+      act1 = compute_local_action(&GC, &geo, &param, &action_rect);
 
       // compute work step
       W += act1 - act0;
@@ -172,6 +176,8 @@ void real_main(char *in_file)
 
   // free rectangles for hierarchical update
   free_rect_hierarc(most_update, clover_rectangle, &param);
+  free_rect(&defect_sites);
+  free_rect(&action_rect);
 
   // free hierarchical update parameters
   free_hierarc_params(&param);

@@ -242,6 +242,20 @@ void set_bound_cond(Gauge_Conf *GC, GParam const * const param, double const Cva
 	}
 }
 
+// set C = Cval on the links of the defect only: same result as set_bound_cond when all the other factors C
+// are already 1 (after init_single_conf_bound_cond). defect_sites = init_rect with L_R = 0, i.e. the sites
+// with coordinate size-1 along defect_dir and the other coordinates below defect_size, as in set_bound_cond
+void set_defect_bound_cond(Gauge_Conf *GC, GParam const * const param, Rectangle const * const defect_sites,
+                           double const Cval)
+{
+	long s;
+
+	for (s = 0; s < defect_sites->d_vol_rect; s++)
+	{
+		GC->C[defect_sites->rect_sites[s]][param->d_defect_dir] = Cval;
+	}
+}
+
 void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
   {
   FILE *fp;

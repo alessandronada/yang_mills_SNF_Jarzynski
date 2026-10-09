@@ -71,6 +71,8 @@ void init_bound_cond(Gauge_Conf *GC,
 										 int const a);
 void init_single_conf_bound_cond(Gauge_Conf *GC, GParam const * const param, double const Cval);
 void set_bound_cond(Gauge_Conf *GC,	GParam const * const param,	double const Cval);
+void set_defect_bound_cond(Gauge_Conf *GC, GParam const * const param, Rectangle const * const defect_sites,
+                           double const Cval);
 void free_replica(Gauge_Conf *GC,
 									GParam const * const param);
 void free_bound_cond(Gauge_Conf *GC,
@@ -482,6 +484,8 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
                          long const r, int const i, int const j, int const a, int const b);
 double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param);
 double compute_defect_action_all(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param);
+double compute_local_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param,
+                            Rectangle const * const box);
 void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double const p, Acc_Utils *acc_counters);
 void conf_translation(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param);	
 void init_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param);
