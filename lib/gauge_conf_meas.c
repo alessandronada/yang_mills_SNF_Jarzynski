@@ -285,6 +285,26 @@ void plaquette(Gauge_Conf const * const GC,
    }
 
 
+// Wilson action S = sum_P beta_P (1 - ReTr(P)/N_c) from the averages plaqs, plaqt of plaquette(), for STDIM = 4
+// (3 spatial and 3 temporal planes per site, as in the flow mains):
+//   anisotropic:  S = beta 3V (1 - plaqs) + beta_t 3V (1 - plaqt)
+//   isotropic:    S = beta 6V (1 - (plaqs + plaqt)/2)        (beta_t is not used)
+// S is linear in the couplings, so beta and beta_t can also be differences of couplings.
+double wilson_action(GParam const * const param, double beta, double beta_t, double plaqs, double plaqt)
+   {
+   double const vol=(double) param->d_volume;
+
+   if(param->d_anisotropic!=0)
+     {
+     return beta*(3.0*vol*(1.0-plaqs)) + beta_t*(3.0*vol*(1.0-plaqt));
+     }
+   else
+     {
+     return beta*(6.0*vol*(1.0-0.5*(plaqs+plaqt)));
+     }
+   }
+
+
 // compute the clover discretization of
 // sum_{\mu\nu}  Tr(F_{\mu\nu}F_{\mu\nu})/2
 void clover_disc_energy(Gauge_Conf const * const GC,

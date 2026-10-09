@@ -70,6 +70,11 @@ static void set_default_parameters(GParam *param)
   param->d_flow_beta_t_target = 6.0;
   param->d_flow_bc_beta0 = 0.0;
   param->d_flow_protocol_type = 0;
+  // allocated by the flow mains only (init_start_end_protocol_*, init_protocol, init_*smearing_parameter)
+  param->d_flow_protocol_start = NULL;
+  param->d_flow_protocol_end = NULL;
+  param->d_flow_protocol = NULL;
+  param->d_SNF_rho = NULL;
 
   // do not measure chi_prime and the time profile of the topological charge
   param->d_chi_prime_meas = 0;
@@ -562,12 +567,28 @@ void check_flow_bc_input(GParam const *param)
   }
 }
 
-void init_start_end_protocol_beta(GParam const *const param, int npar)
+// allocate the starting and ending values of the npar protocol parameters
+static void alloc_start_end_protocol(GParam *param, int npar)
 {
   int err;
 
-  err = posix_memalign((void **)&(param->d_flow_protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
-  err = posix_memalign((void **)&(param->d_flow_protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+  err = posix_memalign((void **)&(param->d_flow_protocol_start), (size_t)DOUBLE_ALIGN, (size_t)npar * sizeof(double));
+  if (err != 0)
+  {
+    fprintf(stderr, "Problems in allocating protocol parameters! (%s, %d)\n", __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  err = posix_memalign((void **)&(param->d_flow_protocol_end), (size_t)DOUBLE_ALIGN, (size_t)npar * sizeof(double));
+  if (err != 0)
+  {
+    fprintf(stderr, "Problems in allocating protocol parameters! (%s, %d)\n", __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+}
+
+void init_start_end_protocol_beta(GParam *param, int npar)
+{
+  alloc_start_end_protocol(param, npar);
 
   if (param->d_anisotropic)
   {
@@ -583,19 +604,16 @@ void init_start_end_protocol_beta(GParam const *const param, int npar)
   }
 }
 
-void init_start_end_protocol_bc(GParam const *const param)
+void init_start_end_protocol_bc(GParam *param)
 {
-  int npar = 1;
-  int err;
-
-  err = posix_memalign((void **)&(param->d_flow_protocol_start), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
-  err = posix_memalign((void **)&(param->d_flow_protocol_end), (size_t)DOUBLE_ALIGN, npar * sizeof(double));
+  alloc_start_end_protocol(param, 1);
 
   param->d_flow_protocol_start[0] = param->d_flow_bc_beta0;
   param->d_flow_protocol_end[0] = 1.0;
 }
 
-void init_protocol(GParam const *const param, int npar)
+// d_flow_protocol[p * d_flow_steps + i] = value of the parameter p after step i (p = 0: beta, p = 1: beta_t)
+void init_protocol(GParam *param, int npar)
 {
   FILE *input_protocol;
   double temp_d;
@@ -631,17 +649,28 @@ void init_protocol(GParam const *const param, int npar)
           }
           param->d_flow_protocol[p * param->d_flow_steps + i] = temp_d;
         }
+      fclose(input_protocol);
     }
   }
   else
   {
-    for (p = 0; p < npar; p++)   
+    for (p = 0; p < npar; p++)
       for (i = 0; i < param->d_flow_steps; i++)
         param->d_flow_protocol[p * param->d_flow_steps + i] = (double)((param->d_flow_protocol_end[p] - param->d_flow_protocol_start[p]) * ((double)(i + 1)) / param->d_flow_steps + param->d_flow_protocol_start[p]);
   }
 }
 
-void init_smearing_parameter(GParam const *const param)
+// flows in beta: set beta (and beta_t, if anisotropic) to their values after step `step` of the protocol
+void set_flow_beta(GParam *param, int step)
+{
+  param->d_beta = param->d_flow_protocol[step];
+  if (param->d_anisotropic != 0)
+  {
+    param->d_beta_t = param->d_flow_protocol[param->d_flow_steps + step];
+  }
+}
+
+void init_smearing_parameter(GParam *param)
 {
   FILE *input_smearingrho;
   double temp_d;
@@ -674,10 +703,13 @@ void init_smearing_parameter(GParam const *const param)
       }
       param->d_SNF_rho[i] = temp_d;
     }
+    fclose(input_smearingrho);
   }
 }
 
-void init_defect_smearing_parameter(GParam const *const param, long rect_vol)
+// d_SNF_rho[((i * STDIM + mu) * rect_vol + s) * 2(STDIM-1) + p] = rho of step i, link direction mu, site s of
+// the smearing rectangle (rect_sites order), staple p (calcstaples_wilson_nosum order)
+void init_defect_smearing_parameter(GParam *param, long rect_vol)
 {
   FILE *input_smearingrho;
   double temp_d;
@@ -719,7 +751,15 @@ void init_defect_smearing_parameter(GParam const *const param, long rect_vol)
 
             param->d_SNF_rho[rho_index] = temp_d;
           }
+    fclose(input_smearingrho);
   }
+}
+
+// rho of the defect smearing at step `step`: STDIM * rect_vol * 2(STDIM-1) values, ordered as in
+// init_defect_smearing_parameter (the layout defect_stout_smearing_update expects)
+double *defect_smearing_rho(GParam const *param, long rect_vol, int step)
+{
+  return param->d_SNF_rho + 2 * (STDIM - 1) * rect_vol * STDIM * step;
 }
 
 // initialize data file
@@ -876,6 +916,19 @@ void free_hierarc_params(GParam *param)
     free(param->d_L_rect);
     free(param->d_N_sweep_rect);
   }
+}
+
+// free the protocol and smearing parameters of the flows (NULL if not allocated)
+void free_flow_params(GParam *param)
+{
+  free(param->d_flow_protocol_start);
+  free(param->d_flow_protocol_end);
+  free(param->d_flow_protocol);
+  free(param->d_SNF_rho);
+  param->d_flow_protocol_start = NULL;
+  param->d_flow_protocol_end = NULL;
+  param->d_flow_protocol = NULL;
+  param->d_SNF_rho = NULL;
 }
 
 // print simulation parameters

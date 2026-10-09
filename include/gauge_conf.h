@@ -169,6 +169,7 @@ void plaquette(Gauge_Conf const * const GC,
                GParam const * const param,
                double *plaqs,
                double *plaqt);
+double wilson_action(GParam const * const param, double beta, double beta_t, double plaqs, double plaqt);
 void clover_disc_energy(Gauge_Conf const * const GC,
                         Geometry const * const geo,
                         GParam const * const param,

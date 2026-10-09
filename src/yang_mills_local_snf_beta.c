@@ -1,5 +1,5 @@
-#ifndef YM_LOCAL_PT_C
-#define YM_LOCAL_PT_C
+#ifndef YM_LOCAL_SNF_BETA_C
+#define YM_LOCAL_SNF_BETA_C
 
 #include "../include/macro.h"
 
@@ -23,9 +23,8 @@ void real_main(char *in_file)
   Gauge_Conf GC, GCstart;
   Geometry geo;
   GParam param;
-  double W = 0.0, beta_0 = 0.0, beta_t_0 = 0.0, act0 = 0.0, act1 = 0.0, act0_t = 0.0, act1_t = 0.0, plaqs, plaqt, logJ;
+  double W = 0.0, beta_0 = 0.0, beta_t_0 = 0.0, act0 = 0.0, act1 = 0.0, plaqs, plaqt, logJ;
 
-  //char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
   int npar, count, rel, step;
   FILE *datafilep, *chiprimefilep, *topchar_tprof_filep, *workfilep;
   time_t time1, time2;
@@ -102,37 +101,18 @@ void real_main(char *in_file)
     {
       // compute S_beta(i) (U_i)
       plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-      if (param.d_anisotropic)
-      {
-        act0 = param.d_beta * 3.0 * param.d_volume * (1.0 - plaqs);
-        act0_t = param.d_beta_t * 3.0 * param.d_volume * (1.0 - plaqt);
-      }
-      else
-      {
-        act0 = param.d_beta * 6.0 * param.d_volume * (1.0 - 0.5 * (plaqs + plaqt));
-      }
-      
+      act0 = wilson_action(&param, param.d_beta, param.d_beta_t, plaqs, plaqt);
+
       // stout smearing step: U_i -> g_i(U_i)
       isotropic_stout_smearing_update(&GC, &geo, &param, &logJ, (param.d_SNF_rho)[step]);
 
       // change beta: S_beta(i) -> S_beta(i+1)
-      param.d_beta = param.d_flow_protocol[step];
-      if (param.d_anisotropic != 0)
-        param.d_beta_t = param.d_flow_protocol[param.d_flow_steps + step];
+      set_flow_beta(&param, step);
 
       // compute S_beta(i+1) (g_i(U_i)) and work
       plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-      if (param.d_anisotropic != 0)
-      {
-        act1 = param.d_beta * 3.0 * param.d_volume * (1.0 - plaqs);
-        act1_t = param.d_beta_t * 3.0 * param.d_volume * (1.0 - plaqt);
-        W += act1 + act1_t - act0 - act0_t - logJ;
-      }
-      else
-      {
-        act1 = param.d_beta * 6.0 * param.d_volume * (1.0 - 0.5 * (plaqs + plaqt));
-        W += act1 - act0 - logJ;
-      }
+      act1 = wilson_action(&param, param.d_beta, param.d_beta_t, plaqs, plaqt);
+      W += act1 - act0 - logJ;
 
       // MC update: g_i(U_i) -> U_(i+1)
       update(&GC, &geo, &param);
@@ -203,6 +183,9 @@ void real_main(char *in_file)
 
   // free geometry
   free_geometry(&geo, &param);
+
+  // free protocol and smearing parameters
+  free_flow_params(&param);
 }
 
 void print_template_input(void)
@@ -220,45 +203,43 @@ void print_template_input(void)
   {
     fprintf(fp, "size 4 4 4 4  # Nt Nx Ny Nz\n");
     fprintf(fp, "\n");
-    fprintf(fp, "# OBC defect parameters\n");
-    fprintf(fp, "defect_dir    1             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
-    fprintf(fp, "defect_size   1 1 1         # size of the defect (order: y-size z-size t-size)\n");
+    fprintf(fp, "# action (beta, beta_t: couplings at the start of each evolution)\n");
+    fprintf(fp, "beta         5.705\n");
+    fprintf(fp, "anisotropic  0      # 0 = isotropic, otherwise beta for spatial and beta_t for temporal plaquettes\n");
+    fprintf(fp, "beta_t       5.705  # (only if anisotropic)\n");
+    fprintf(fp, "theta        0.0    # imaginary theta (only if compiled with --enable-use-theta)\n");
     fprintf(fp, "\n");
-    fprintf(fp, "# flow (Jarzynski or SNF) evolutions parameters\n");
-    fprintf(fp, "num_flow_ev      10         #number of non-equilibrium evolutions\n");
-    fprintf(fp, "num_flow_between   1        #number of updates between the start of each evolution\n");
-    fprintf(fp, "num_flow_steps   10         #steps in each out-of-equilibrium evolution\n");
-    fprintf(fp, "num_flow_dmeas   10         #steps between measurements during an evolution (only in beta)\n");
-    fprintf(fp, "flow_beta_target    6.2    #target beta (only for evolutions in beta)\n");
+    fprintf(fp, "# flow in beta (SNF: stout smearing and update at each step)\n");
+    fprintf(fp, "flow_beta_target    6.2  # target beta\n");
+    fprintf(fp, "flow_beta_t_target  6.2  # target beta_t (only if anisotropic)\n");
+    fprintf(fp, "num_flow_ev         10   # number of non-equilibrium evolutions\n");
+    fprintf(fp, "num_flow_between    1    # number of updates between the start of two evolutions\n");
+    fprintf(fp, "num_flow_steps      10   # number of steps of each evolution\n");
+    fprintf(fp, "num_flow_dmeas      10   # steps between measurements during an evolution\n");
+    fprintf(fp, "protocol_type       0    # 0 = linear protocol, otherwise read from protocol_file\n");
     fprintf(fp, "\n");
-    fprintf(fp, "# hierarchical update parameters\n");
-    fprintf(fp, "# Ord:qer: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
-    fprintf(fp, "hierarc_upd 2    2 1    1 1\n");
-    fprintf(fp, "\n");
-    fprintf(fp, "# Simulations parameters\n");
-    fprintf(fp, "beta  5.705\n");
-    fprintf(fp, "theta 1.5\n");
-    fprintf(fp, "\n");
+    fprintf(fp, "# Monte Carlo\n");
     fprintf(fp, "thermal    0\n");
     fprintf(fp, "overrelax  5\n");
     fprintf(fp, "\n");
     fprintf(fp, "start                    0  # 0=ordered  1=random  2=from saved configuration\n");
-    fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
-    fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
+    fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... evolutions\n");
+    fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... evolutions\n");
     fprintf(fp, "\n");
+    fprintf(fp, "# measurements\n");
     fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
     fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
     fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
     fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
     fprintf(fp, "\n");
-    fprintf(fp, "# output files\n");
+    fprintf(fp, "# input and output files\n");
+    fprintf(fp, "smearingrho_file      rho.dat              # rho of the stout smearing, one per step (text)\n");
     fprintf(fp, "conf_file             conf.dat\n");
     fprintf(fp, "data_file             dati.dat\n");
     fprintf(fp, "work_file             work.dat\n");
-    fprintf(fp, "protocol_file         protocol.dat\n");
-    fprintf(fp, "smearingrho_file         rho.dat\n");
-    fprintf(fp, "chiprime_data_file    chiprime_cool.dat\n");
-    fprintf(fp, "topcharge_tprof_file  topo_tcorr_cool.dat\n");
+    fprintf(fp, "protocol_file         protocol.dat         # (only if protocol_type != 0)\n");
+    fprintf(fp, "chiprime_data_file    chiprime_cool.dat    # (only if chi_prime_meas = 1)\n");
+    fprintf(fp, "topcharge_tprof_file  topo_tcorr_cool.dat  # (only if topcharge_tprof_meas = 1)\n");
     fprintf(fp, "log_file              log.dat\n");
     fprintf(fp, "\n");
     fprintf(fp, "randseed 0    # (0=time)\n");
@@ -321,7 +302,7 @@ int main(int argc, char **argv)
   {
     if (strlen(argv[1]) >= STD_STRING_LENGTH)
     {
-      fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
+      fprintf(stderr, "File name too long. Increase STD_STRING_LENGTH in /include/macro.h\n");
       return EXIT_FAILURE;
     }
     else
