@@ -123,8 +123,8 @@ void real_main(char *in_file)
     {
       if ((int)GC.evolution_index % param.d_saveconf_analysis_every == 0)
       {
-        write_evolution_conf_on_file(&GCstart, &param, 1);
-        write_evolution_conf_on_file(&GC, &param, 0);
+        write_evolution_conf_on_file(&GCstart, &param, "");
+        write_evolution_conf_on_file(&GC, &param, "_PBC");
       }
     }
 

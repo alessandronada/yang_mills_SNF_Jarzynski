@@ -453,16 +453,19 @@ void write_conf_on_file(Gauge_Conf const * const GC, GParam const * const param)
   write_conf_on_file_with_name(GC, param, param->d_conf_file);
   }
 
-void write_evolution_conf_on_file(Gauge_Conf const* const GC, GParam const* const param, int obc)
-{	
-    char filename[STD_STRING_LENGTH], evolution_index[STD_STRING_LENGTH];
-    strcpy(filename, param->d_conf_file);
-    if (obc != 0)
-        strcat(filename, "_ev_");
-    else
-        strcat(filename, "_PBC_ev_");
-    sprintf(evolution_index, "%ld", GC->evolution_index);
-    strcat(filename, evolution_index); // filename = d_conf_file + "_ev_${i}"
+// save a configuration of evolution i as d_conf_file + tag + "_ev_" + i: tag = "" at the start of the
+// evolution, "_PBC" at the end of a flow in the boundary conditions, "_targetbeta" at the end of a flow in beta
+void write_evolution_conf_on_file(Gauge_Conf const* const GC, GParam const* const param, char const* const tag)
+{
+    char filename[2 * STD_STRING_LENGTH];
+    int len;
+
+    len = snprintf(filename, sizeof(filename), "%s%s_ev_%ld", param->d_conf_file, tag, GC->evolution_index);
+    if (len < 0 || (size_t)len >= sizeof(filename))
+    {
+        fprintf(stderr, "Configuration file name too long (%s, %d)\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
     write_conf_on_file_with_name(GC, param, filename);
 }
 

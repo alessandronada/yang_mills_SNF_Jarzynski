@@ -124,7 +124,7 @@ void real_main(char *in_file)
       }
     }
 
-    // perform measures only on PBC configuration
+    // perform measures at the end of the evolution (target beta)
     perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
     print_work((int)GC.evolution_index, W, workfilep);
 
@@ -133,8 +133,8 @@ void real_main(char *in_file)
     {
       if ((int)GC.evolution_index % param.d_saveconf_analysis_every == 0)
       {
-        write_evolution_conf_on_file(&GCstart, &param, 0);
-        write_evolution_conf_on_file(&GC, &param, 1);
+        write_evolution_conf_on_file(&GCstart, &param, "");
+        write_evolution_conf_on_file(&GC, &param, "_targetbeta");
       }
     }
 

@@ -88,7 +88,7 @@ void write_conf_on_file(Gauge_Conf const * const GC,
                         GParam const * const param);
 void write_conf_on_file_back(Gauge_Conf const * const GC,
                             GParam const * const param);
-void write_evolution_conf_on_file(Gauge_Conf const* const GC, GParam const* const param, int obc);
+void write_evolution_conf_on_file(Gauge_Conf const* const GC, GParam const* const param, char const* const tag);
 void write_replica_on_file(Gauge_Conf const * const GC,
 														GParam const * const param);
 void write_replica_on_file_back(Gauge_Conf const * const GC,
