@@ -190,7 +190,7 @@ double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const
 double compute_defect_action_all(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param)
 {
 	long r;
-    double re_tr_plaq, K, pl=0.0;
+    double pl=0.0;
 
     #ifdef OPENMP_MODE
     #pragma omp parallel for num_threads(NTHREADS) private(r) reduction(+ : pl)
@@ -198,7 +198,8 @@ double compute_defect_action_all(Gauge_Conf const * const GC, Geometry const * c
     for(r=0; r<(param->d_volume); r++)
 	{
     	int i, j;
-     
+    	double re_tr_plaq, K; // private to each thread
+
     	for(i=0; i<STDIM; i++)
         {
         	for(j=i+1; j<STDIM; j++)
