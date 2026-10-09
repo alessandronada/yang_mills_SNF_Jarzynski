@@ -5,82 +5,62 @@
 #include "../include/endianness.h"
 #include "../include/gparam.h"
 
+#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-// remove from input file white/empty lines and comments
-// comments start with the charachter #
+// skip blanks (spaces, tabs, newlines, the \r of CRLF files) and comments, from # to the end of the
+// line, up to the next word or the end of the file
 void remove_white_line_and_comments(FILE *input)
 {
-  int temp_i;
+  int c;
 
-  temp_i = getc(input);
-  if (temp_i == '\n' || temp_i == ' ' || temp_i == '\043') // scan for white lines and comments
+  do
   {
-    ungetc(temp_i, input);
-
-    temp_i = getc(input);
-    if (temp_i == '\n' || temp_i == ' ') // white line
+    c = getc(input);
+    if (c == '#')
     {
       do
       {
-        temp_i = getc(input);
-      } while (temp_i == '\n' || temp_i == ' ');
+        c = getc(input);
+      } while (c != '\n' && c != EOF); // a comment can end the file without a newline
     }
-    ungetc(temp_i, input);
-
-    temp_i = getc(input);
-    if (temp_i == '\043') // comment, \043 = ascii oct for #
-    {
-      do
-      {
-        temp_i = getc(input);
-      } while (temp_i != '\n');
-    }
-    else
-    {
-      ungetc(temp_i, input);
-    }
-
-    remove_white_line_and_comments(input);
-  }
-  else
-  {
-    ungetc(temp_i, input);
-  }
+  } while (c != EOF && isspace(c));
+  ungetc(c, input); // no-op at EOF
 }
 
-void readinput(char *in_file, GParam *param)
+// defaults of the optional parameters, and zeros for arrays that the input may fill only in part
+static void set_default_parameters(GParam *param)
 {
-  FILE *input;
-  char str[STD_STRING_LENGTH], temp_str[STD_STRING_LENGTH];
-  double temp_d;
-  int temp_i, i;
-  int err, end = 1;
-  unsigned int temp_ui;
+  int i;
 
-  // this is to avoid unnecessary checks in case the multilevel is not used
+  // ml_step[0] = 0 means that the multilevel is not used, and skips its checks
   for (i = 0; i < NLEVELS; i++)
   {
     param->d_ml_step[i] = 0;
   }
 
-  // just to avoid possible mistakes with uninitialized stuff
   for (i = 0; i < NCOLOR; i++)
   {
     param->d_h[i] = 0.0;
   }
   param->d_theta = 0.0;
 
-  // to avoid possible mistakes with uninitialized stuff
+  // defect_dir = -1: no defect
+  param->d_defect_dir = -1;
   for (i = 0; i < STDIM - 1; i++)
   {
     param->d_L_defect[i] = 0;
   }
   param->d_N_replica_pt = 1;
+
+  // no hierarchical update
+  param->d_N_hierarc_levels = 0;
+  param->d_L_rect = NULL;
+  param->d_N_sweep_rect = NULL;
 
   param->d_flow_evolutions = 0;
   param->d_flow_between = 0;
@@ -91,797 +71,405 @@ void readinput(char *in_file, GParam *param)
   param->d_flow_bc_beta0 = 0.0;
   param->d_flow_protocol_type = 0;
 
-  // default = do not compute chi_prime
+  // do not measure chi_prime and the time profile of the topological charge
   param->d_chi_prime_meas = 0;
   param->d_topcharge_tprof_meas = 0;
+}
 
-  input = fopen(in_file, "r"); // open the input file
+// input keywords are matched exactly, so that a misspelled keyword stops the run
+static int key_is(char const *key, char const *name)
+{
+  return strcmp(key, name) == 0;
+}
+
+// stop if the value of the keyword key could not be read (err is the return value of fscanf)
+static void check_read(int err, char const *key, char const *in_file)
+{
+  if (err != 1)
+  {
+    fprintf(stderr, "Error in reading the value of %s in the file %s (%s, %d)\n", key, in_file, __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static void read_ints(FILE *input, char const *in_file, char const *key, int *values, int n)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+  {
+    check_read(fscanf(input, "%d", &values[i]), key, in_file);
+  }
+}
+
+static void read_int(FILE *input, char const *in_file, char const *key, int *value)
+{
+  read_ints(input, in_file, key, value, 1);
+}
+
+// read an integer that has to lie in [min, max]
+static void read_int_in_range(FILE *input, char const *in_file, char const *key, int *value, int min, int max)
+{
+  read_int(input, in_file, key, value);
+  if (*value < min || *value > max)
+  {
+    fprintf(stderr, "Error in reading the file %s: %s must be between %d and %d (%s, %d)\n",
+            in_file, key, min, max, __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static void read_doubles(FILE *input, char const *in_file, char const *key, double *values, int n)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+  {
+    check_read(fscanf(input, "%lf", &values[i]), key, in_file);
+  }
+}
+
+static void read_double(FILE *input, char const *in_file, char const *key, double *value)
+{
+  read_doubles(input, in_file, key, value, 1);
+}
+
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
+
+// fscanf(input, "%s", word) into a string of STD_STRING_LENGTH characters (keywords and the file names
+// in GParam); stops if the word in the file does not fit. Returns the value of fscanf.
+static int scan_word(FILE *input, char const *in_file, char *word)
+{
+  // one character more than word, to detect the words that do not fit;
+  // the format is "%150s" (STD_STRING_LENGTH has to be a plain number)
+  char buffer[STD_STRING_LENGTH + 1];
+  int const err = fscanf(input, "%" STRINGIFY(STD_STRING_LENGTH) "s", buffer);
+
+  if (err == 1)
+  {
+    if (strlen(buffer) >= STD_STRING_LENGTH)
+    {
+      fprintf(stderr, "Error in reading the file %s: %.40s... is longer than %d characters (%s, %d)\n",
+              in_file, buffer, STD_STRING_LENGTH - 1, __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
+    }
+    strcpy(word, buffer);
+  }
+  return err;
+}
+
+static void read_string(FILE *input, char const *in_file, char const *key, char *value)
+{
+  check_read(scan_word(input, in_file, value), key, in_file);
+}
+
+// hierarc_upd N  L_rect[0] ... L_rect[N-1]  N_sweep_rect[0] ... N_sweep_rect[N-1]
+static void read_hierarc_params(FILE *input, char const *in_file, char const *key, GParam *param)
+{
+  int n;
+
+  // a repeated hierarc_upd line replaces the previous one
+  free(param->d_L_rect);
+  free(param->d_N_sweep_rect);
+  param->d_L_rect = NULL;
+  param->d_N_sweep_rect = NULL;
+
+  read_int(input, in_file, key, &param->d_N_hierarc_levels);
+  n = param->d_N_hierarc_levels;
+  if (n > 0)
+  {
+    if (posix_memalign((void **)&(param->d_L_rect), (size_t)INT_ALIGN, (size_t)n * sizeof(int)) != 0
+        || posix_memalign((void **)&(param->d_N_sweep_rect), (size_t)INT_ALIGN, (size_t)n * sizeof(int)) != 0)
+    {
+      fprintf(stderr, "Problems in allocating hierarchical update parameters! (%s, %d)\n", __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
+    }
+    read_ints(input, in_file, key, param->d_L_rect, n);
+    read_ints(input, in_file, key, param->d_N_sweep_rect, n);
+  }
+}
+
+// read the value(s) that follow the keyword key in the input file
+static void read_keyword_value(FILE *input, char const *in_file, char const *key, GParam *param)
+{
+  // lattice and action
+  if (key_is(key, "size"))
+    read_ints(input, in_file, key, param->d_size, STDIM);
+  else if (key_is(key, "beta"))
+    read_double(input, in_file, key, &param->d_beta);
+  else if (key_is(key, "beta_t"))
+    read_double(input, in_file, key, &param->d_beta_t);
+  else if (key_is(key, "anisotropic"))
+    read_int(input, in_file, key, &param->d_anisotropic);
+  else if (key_is(key, "htracedef"))
+    read_doubles(input, in_file, key, param->d_h, NCOLOR / 2);
+  else if (key_is(key, "theta"))
+    read_double(input, in_file, key, &param->d_theta);
+
+  // Monte Carlo
+  else if (key_is(key, "sample"))
+    read_int(input, in_file, key, &param->d_sample);
+  else if (key_is(key, "thermal"))
+    read_int(input, in_file, key, &param->d_thermal);
+  else if (key_is(key, "overrelax"))
+    read_int(input, in_file, key, &param->d_overrelax);
+  else if (key_is(key, "measevery"))
+    read_int(input, in_file, key, &param->d_measevery);
+  else if (key_is(key, "start"))
+    read_int(input, in_file, key, &param->d_start);
+  else if (key_is(key, "saveconf_back_every"))
+    read_int(input, in_file, key, &param->d_saveconf_back_every);
+  else if (key_is(key, "saveconf_analysis_every"))
+    read_int(input, in_file, key, &param->d_saveconf_analysis_every);
+  else if (key_is(key, "epsilon_metro"))
+    read_double(input, in_file, key, &param->d_epsilon_metro);
+  else if (key_is(key, "randseed"))
+    check_read(fscanf(input, "%u", &param->d_randseed), key, in_file);
+
+  // measurements: cooling, topological charge, gradient flow
+  else if (key_is(key, "coolsteps"))
+    read_int(input, in_file, key, &param->d_coolsteps);
+  else if (key_is(key, "coolrepeat"))
+    read_int(input, in_file, key, &param->d_coolrepeat);
+  else if (key_is(key, "chi_prime_meas"))
+    read_int_in_range(input, in_file, key, &param->d_chi_prime_meas, 0, 1);
+  else if (key_is(key, "topcharge_tprof_meas"))
+    read_int_in_range(input, in_file, key, &param->d_topcharge_tprof_meas, 0, 1);
+  else if (key_is(key, "gfstep")) // integration step
+    read_double(input, in_file, key, &param->d_gfstep);
+  else if (key_is(key, "num_gfsteps")) // number of integration steps
+    read_int(input, in_file, key, &param->d_ngfsteps);
+  else if (key_is(key, "gf_meas_each"))
+    read_int(input, in_file, key, &param->d_gf_meas_each);
+
+  // multilevel
+  else if (key_is(key, "multihit"))
+    read_int(input, in_file, key, &param->d_multihit);
+  else if (key_is(key, "ml_step"))
+    read_ints(input, in_file, key, param->d_ml_step, NLEVELS);
+  else if (key_is(key, "ml_upd"))
+    read_ints(input, in_file, key, param->d_ml_upd, NLEVELS);
+  else if (key_is(key, "ml_level0_repeat"))
+    read_int(input, in_file, key, &param->d_ml_level0_repeat);
+  else if (key_is(key, "dist_poly"))
+    read_int(input, in_file, key, &param->d_dist_poly);
+  else if (key_is(key, "transv_dist"))
+    read_int(input, in_file, key, &param->d_trasv_dist);
+  else if (key_is(key, "plaq_dir"))
+    read_ints(input, in_file, key, param->d_plaq_dir, 2);
+
+  // defect (PTBC) and hierarchical update
+  else if (key_is(key, "defect_dir"))
+    read_int_in_range(input, in_file, key, &param->d_defect_dir, 0, STDIM - 1);
+  else if (key_is(key, "defect_size"))
+    read_ints(input, in_file, key, param->d_L_defect, STDIM - 1);
+  else if (key_is(key, "hierarc_upd"))
+    read_hierarc_params(input, in_file, key, param);
+
+  // non-equilibrium evolutions (Jarzynski, SNF)
+  else if (key_is(key, "flow_beta_target"))
+    read_double(input, in_file, key, &param->d_flow_beta_target);
+  else if (key_is(key, "flow_beta_t_target"))
+    read_double(input, in_file, key, &param->d_flow_beta_t_target);
+  else if (key_is(key, "flow_bc_beta0"))
+    read_double(input, in_file, key, &param->d_flow_bc_beta0);
+  else if (key_is(key, "num_flow_ev"))
+    read_int(input, in_file, key, &param->d_flow_evolutions);
+  else if (key_is(key, "num_flow_steps"))
+    read_int(input, in_file, key, &param->d_flow_steps);
+  else if (key_is(key, "num_flow_between"))
+    read_int(input, in_file, key, &param->d_flow_between);
+  else if (key_is(key, "num_flow_dmeas"))
+    read_int(input, in_file, key, &param->d_flow_dmeas);
+  else if (key_is(key, "protocol_type"))
+    read_int(input, in_file, key, &param->d_flow_protocol_type);
+
+  // multicanonic
+  else if (key_is(key, "grid_step"))
+    read_double(input, in_file, key, &param->d_grid_step);
+  else if (key_is(key, "grid_max"))
+    read_double(input, in_file, key, &param->d_grid_max);
+
+  // file names
+  else if (key_is(key, "conf_file"))
+    read_string(input, in_file, key, param->d_conf_file);
+  else if (key_is(key, "data_file"))
+    read_string(input, in_file, key, param->d_data_file);
+  else if (key_is(key, "work_file"))
+    read_string(input, in_file, key, param->d_work_file);
+  else if (key_is(key, "log_file"))
+    read_string(input, in_file, key, param->d_log_file);
+  else if (key_is(key, "protocol_file"))
+    read_string(input, in_file, key, param->d_protocol_file);
+  else if (key_is(key, "smearingrho_file"))
+    read_string(input, in_file, key, param->d_smearingrho_file);
+  else if (key_is(key, "chiprime_data_file"))
+    read_string(input, in_file, key, param->d_chiprime_file);
+  else if (key_is(key, "topcharge_tprof_file"))
+    read_string(input, in_file, key, param->d_topcharge_tprof_file);
+  else if (key_is(key, "ml_file"))
+    read_string(input, in_file, key, param->d_ml_file);
+  else if (key_is(key, "swap_acc_file"))
+    read_string(input, in_file, key, param->d_swap_acc_file);
+  else if (key_is(key, "swap_track_file"))
+    read_string(input, in_file, key, param->d_swap_tracking_file);
+  else if (key_is(key, "multicanonic_acc_file"))
+    read_string(input, in_file, key, param->d_multicanonic_acc_file);
+  else if (key_is(key, "topo_potential_file"))
+    read_string(input, in_file, key, param->d_topo_potential_file);
+
+  else
+  {
+    fprintf(stderr, "Error: unrecognized option %s in the file %s (%s, %d)\n", key, in_file, __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static int end_of_file(FILE *input)
+{
+  int const c = getc(input);
+
+  if (c == EOF)
+  {
+    return 1;
+  }
+  ungetc(c, input);
+  return 0;
+}
+
+// multilevel: ml_step[0] divides size[0], each ml_step[i] divides ml_step[i-1] and is smaller, and all are > 1
+static void check_multilevel_steps(GParam const *param)
+{
+  int i;
+
+  if (param->d_ml_step[0] == 0) // multilevel not used
+  {
+    return;
+  }
+
+  if (param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
+  {
+    fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  for (i = 1; i < NLEVELS; i++)
+  {
+    if (param->d_ml_step[i - 1] % param->d_ml_step[i] || param->d_ml_step[i - 1] <= param->d_ml_step[i])
+    {
+      fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i - 1, i, __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
+    }
+  }
+  if (param->d_ml_step[NLEVELS - 1] == 1)
+  {
+    fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS - 1, __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static void check_lattice_sizes(GParam const *param)
+{
+  int i;
+
+#ifdef OPENMP_MODE
+  // the even/odd parallel updates need even sides
+  for (i = 0; i < STDIM; i++)
+  {
+    if (param->d_size[i] % 2 != 0)
+    {
+      fprintf(stderr, "Error: size[%d] is not even.\n", i);
+      fprintf(stderr, "When using OpenMP all the sides of the lattice have to be even! (%s, %d)\n", __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
+    }
+  }
+#endif
+
+  for (i = 0; i < STDIM; i++)
+  {
+    if (param->d_size[i] == 1)
+    {
+      fprintf(stderr, "Error: all sizes has to be larger than 1: the totally reduced case is not implemented! (%s, %d)\n", __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+// L_defect[k] is the size of the defect along the k-th direction orthogonal to defect_dir, in increasing
+// order (as perp_dir in geometry.c): for defect_dir = 1, along t, y, z
+static void check_defect_size(GParam const *param)
+{
+  int dir, k;
+
+  if (param->d_defect_dir < 0) // no defect
+  {
+    for (k = 0; k < STDIM - 1; k++)
+    {
+      if (param->d_L_defect[k] != 0)
+      {
+        fprintf(stderr, "Error: defect_size needs defect_dir (%s, %d)\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+      }
+    }
+    return;
+  }
+
+  k = 0;
+  for (dir = 0; dir < STDIM; dir++)
+  {
+    if (dir == param->d_defect_dir)
+    {
+      continue;
+    }
+    if (param->d_L_defect[k] > param->d_size[dir])
+    {
+      fprintf(stderr, "Error: defect_size[%d] = %d is larger than size[%d] = %d (defect_dir %d) (%s, %d)\n",
+              k, param->d_L_defect[k], dir, param->d_size[dir], param->d_defect_dir, __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
+    }
+    k++;
+  }
+}
+
+// the input file is a sequence of keywords, each followed by its value(s);
+// empty lines and comments (from # to the end of the line) are skipped
+void readinput(char *in_file, GParam *param)
+{
+  FILE *input;
+  char key[STD_STRING_LENGTH];
+  int err;
+
+  set_default_parameters(param);
+
+  input = fopen(in_file, "r");
   if (input == NULL)
   {
     fprintf(stderr, "Error in opening the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
     exit(EXIT_FAILURE);
   }
-  else
+
+  do
   {
-    while (end == 1) // slide the file
+    remove_white_line_and_comments(input);
+
+    err = scan_word(input, in_file, key);
+    if (err != 1)
     {
-      remove_white_line_and_comments(input);
-
-      err = fscanf(input, "%s", str);
-      if (err != 1)
-      {
-        fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-        printf("err=%d\n", err);
-        exit(EXIT_FAILURE);
-      }
-
-      if (strncmp(str, "size", 4) == 0)
-      {
-        for (i = 0; i < STDIM; i++)
-        {
-          err = fscanf(input, "%d", &temp_i);
-          if (err != 1)
-          {
-            fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-            exit(EXIT_FAILURE);
-          }
-          param->d_size[i] = temp_i;
-        }
-      }
-
-      // beta_t before beta, matched exactly: "beta" compares only 4 characters and would also
-      // match "beta_t"
-      else if (strcmp(str, "beta_t") == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_beta_t = temp_d;
-      }
-      else if (strncmp(str, "beta", 4) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_beta = temp_d;
-      }
-
-      else if (strncmp(str, "anisotropic", 11) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_anisotropic = temp_i;
-      }
-
-      else if (strncmp(str, "htracedef", 9) == 0)
-      {
-        for (i = 0; i < (int)floor(NCOLOR / 2.0); i++)
-        {
-          err = fscanf(input, "%lf", &temp_d);
-          if (err != 1)
-          {
-            fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-            exit(EXIT_FAILURE);
-          }
-          param->d_h[i] = temp_d;
-        }
-      }
-      else if (strncmp(str, "theta", 5) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_theta = temp_d;
-      }
-
-      else if (strncmp(str, "sample", 6) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_sample = temp_i;
-      }
-      else if (strncmp(str, "thermal", 7) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_thermal = temp_i;
-      }
-      else if (strncmp(str, "overrelax", 9) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_overrelax = temp_i;
-      }
-      else if (strncmp(str, "measevery", 9) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_measevery = temp_i;
-      }
-
-      else if (strncmp(str, "start", 5) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_start = temp_i;
-      }
-      else if (strncmp(str, "saveconf_back_every", 19) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_saveconf_back_every = temp_i;
-      }
-      else if (strncmp(str, "saveconf_analysis_every", 23) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_saveconf_analysis_every = temp_i;
-      }
-
-      else if (strncmp(str, "epsilon_metro", 13) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_epsilon_metro = temp_d;
-      }
-
-      else if (strncmp(str, "coolsteps", 9) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_coolsteps = temp_i;
-      }
-      else if (strncmp(str, "coolrepeat", 10) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_coolrepeat = temp_i;
-      }
-      else if (strncmp(str, "chi_prime_meas", 14) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        if ((temp_i == 1) || (temp_i == 0))
-          param->d_chi_prime_meas = temp_i;
-        else
-        {
-          fprintf(stderr, "Error: chi_prime_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-      }
-
-      else if (strncmp(str, "topcharge_tprof_meas", 20) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        if ((temp_i == 1) || (temp_i == 0))
-          param->d_topcharge_tprof_meas = temp_i;
-        else
-        {
-          fprintf(stderr, "Error: chi_prime_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-      }
-
-      else if (strncmp(str, "topcharge_tprof_file", 20) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_topcharge_tprof_file, temp_str);
-      }
-
-      else if (strncmp(str, "gfstep", 6) == 0) // integration step
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_gfstep = temp_d;
-      }
-
-      else if (strncmp(str, "num_gfsteps", 11) == 0) // number of integration steps
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_ngfsteps = temp_i;
-      }
-      else if (strncmp(str, "gf_meas_each", 12) == 0) // number of integration steps
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_gf_meas_each = temp_i;
-      }
-
-      else if (strncmp(str, "multihit", 8) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_multihit = temp_i;
-      }
-      else if (strncmp(str, "ml_step", 7) == 0)
-      {
-        for (i = 0; i < NLEVELS; i++)
-        {
-          err = fscanf(input, "%d", &temp_i);
-          if (err != 1)
-          {
-            fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-            exit(EXIT_FAILURE);
-          }
-          param->d_ml_step[i] = temp_i;
-        }
-      }
-      else if (strncmp(str, "ml_upd", 6) == 0)
-      {
-        for (i = 0; i < NLEVELS; i++)
-        {
-          err = fscanf(input, "%d", &temp_i);
-          if (err != 1)
-          {
-            fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-            exit(EXIT_FAILURE);
-          }
-          param->d_ml_upd[i] = temp_i;
-        }
-      }
-      else if (strncmp(str, "ml_level0_repeat", 16) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_ml_level0_repeat = temp_i;
-      }
-      else if (strncmp(str, "dist_poly", 9) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_dist_poly = temp_i;
-      }
-      else if (strncmp(str, "transv_dist", 11) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_trasv_dist = temp_i;
-      }
-      else if (strncmp(str, "plaq_dir", 8) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_plaq_dir[0] = temp_i;
-
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_plaq_dir[1] = temp_i;
-      }
-
-      else if (strncmp(str, "conf_file", 9) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_conf_file, temp_str);
-      }
-      else if (strncmp(str, "data_file", 9) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_data_file, temp_str);
-      }
-      else if (strncmp(str, "work_file", 9) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_work_file, temp_str);
-      }
-      else if (strncmp(str, "protocol_file", 13) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_protocol_file, temp_str);
-      }
-      else if (strncmp(str, "smearingrho_file", 16) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_smearingrho_file, temp_str);
-      }
-      else if (strncmp(str, "chiprime_data_file", 18) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_chiprime_file, temp_str);
-      }
-      else if (strncmp(str, "log_file", 8) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_log_file, temp_str);
-      }
-      else if (strncmp(str, "ml_file", 7) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_ml_file, temp_str);
-      }
-
-      else if (strncmp(str, "randseed", 8) == 0)
-      {
-        err = fscanf(input, "%u", &temp_ui);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_randseed = temp_ui;
-      }
-      else if (strncmp(str, "defect_dir", 10) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        if ((temp_i == 0) || (temp_i == 1) || (temp_i == 2) || (temp_i == 3))
-        {
-          param->d_defect_dir = temp_i;
-        }
-        else
-        {
-          fprintf(stderr, "Error in reading the file %s, defect_dir must be either 0,1,2 or 3 (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-      }
-      else if (strncmp(str, "defect_size", 11) == 0)
-      {
-        for (i = 0; i < STDIM - 1; i++)
-        {
-          err = fscanf(input, "%d", &temp_i);
-          if (err != 1)
-          {
-            fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-            exit(EXIT_FAILURE);
-          }
-          param->d_L_defect[i] = temp_i;
-        }
-      }
-      //  else if(strncmp(str, "N_replica_pt", 12)==0)
-      //         {
-      //         err=fscanf(input, "%d", &temp_i);
-      //         if(err!=1)
-      //           {
-      //           fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-      //           exit(EXIT_FAILURE);
-      //           }
-      // 				param->d_N_replica_pt=temp_i;
-      // 				err=posix_memalign( (void **) &(param->d_pt_bound_cond_coeff), (size_t) DOUBLE_ALIGN, (size_t) param->d_N_replica_pt * sizeof(double));
-      // 				if(err!=0)
-      // 					{
-      // 					fprintf(stderr, "Problems in allocating parallel tempering parameters! (%s, %d)\n", __FILE__, __LINE__);
-      // 					exit(EXIT_FAILURE);
-      // 					}
-      // 				for(i=0;i<param->d_N_replica_pt;i++)
-      // 					{
-      // 					err=fscanf(input, "%lf", &temp_d);
-      // 					if(err!=1)
-      // 						{
-      // 						fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-      // 						exit(EXIT_FAILURE);
-      // 						}
-      // 					param->d_pt_bound_cond_coeff[i]=temp_d;
-      // 					}
-      //         }
-
-      else if (strncmp(str, "flow_beta_target", 16) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_flow_beta_target = temp_d;
-      }
-      else if (strncmp(str, "flow_beta_t_target", 16) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_flow_beta_t_target = temp_d;
-      }
-
-      else if (strncmp(str, "flow_bc_beta0", 13) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_flow_bc_beta0 = temp_d;
-      }
-      else if (strncmp(str, "num_flow_ev", 11) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_flow_evolutions = temp_i;
-      }
-      else if (strncmp(str, "num_flow_steps", 14) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_flow_steps = temp_i;
-      }
-      else if (strncmp(str, "num_flow_between", 16) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_flow_between = temp_i;
-      }
-      else if (strncmp(str, "num_flow_dmeas", 14) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_flow_dmeas = temp_i;
-      }
-      else if (strncmp(str, "protocol_type", 13) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_flow_protocol_type = temp_i;
-      }
-      else if (strncmp(str, "swap_acc_file", 13) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_swap_acc_file, temp_str);
-      }
-      else if (strncmp(str, "swap_track_file", 15) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_swap_tracking_file, temp_str);
-      }
-      else if (strncmp(str, "hierarc_upd", 11) == 0)
-      {
-        err = fscanf(input, "%d", &temp_i);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_N_hierarc_levels = temp_i;
-        if (param->d_N_hierarc_levels > 0)
-        {
-          err = posix_memalign((void **)&(param->d_L_rect), (size_t)INT_ALIGN, (size_t)param->d_N_hierarc_levels * sizeof(int));
-          if (err != 0)
-          {
-            fprintf(stderr, "Problems in allocating hierarchical update parameters! (%s, %d)\n", __FILE__, __LINE__);
-            exit(EXIT_FAILURE);
-          }
-          for (i = 0; i < param->d_N_hierarc_levels; i++)
-          {
-            err = fscanf(input, "%d", &temp_i);
-            if (err != 1)
-            {
-              fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-              exit(EXIT_FAILURE);
-            }
-            param->d_L_rect[i] = temp_i;
-          }
-          err = posix_memalign((void **)&(param->d_N_sweep_rect), (size_t)INT_ALIGN, (size_t)param->d_N_hierarc_levels * sizeof(int));
-          if (err != 0)
-          {
-            fprintf(stderr, "Problems in allocating hierarchical update parameters! (%s, %d)\n", __FILE__, __LINE__);
-            exit(EXIT_FAILURE);
-          }
-          for (i = 0; i < param->d_N_hierarc_levels; i++)
-          {
-            err = fscanf(input, "%d", &temp_i);
-            if (err != 1)
-            {
-              fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-              exit(EXIT_FAILURE);
-            }
-            param->d_N_sweep_rect[i] = temp_i;
-          }
-        } // closes if( num_hierarc_levels > 0 )
-      }
-      else if (strncmp(str, "multicanonic_acc_file", 21) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_multicanonic_acc_file, temp_str);
-      }
-      else if (strncmp(str, "topo_potential_file", 19) == 0)
-      {
-        err = fscanf(input, "%s", temp_str);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        strcpy(param->d_topo_potential_file, temp_str);
-      }
-      else if (strncmp(str, "grid_step", 9) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_grid_step = temp_d;
-      }
-      else if (strncmp(str, "grid_max", 8) == 0)
-      {
-        err = fscanf(input, "%lf", &temp_d);
-        if (err != 1)
-        {
-          fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-        param->d_grid_max = temp_d;
-      }
-      else
-      {
-        fprintf(stderr, "Error: unrecognized option %s in the file %s (%s, %d)\n", str, in_file, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-      }
-
-      remove_white_line_and_comments(input);
-
-      // check if the read line is the last one
-      temp_i = getc(input);
-      if (temp_i == EOF)
-      {
-        end = 0;
-      }
-      else
-      {
-        ungetc(temp_i, input);
-      }
-    }
-
-    fclose(input);
-
-    // VARIOUS CHECKS
-    if (param->d_ml_step[0] != 0)
-    {
-      if (param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
-      {
-        fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-      }
-      for (i = 1; i < NLEVELS; i++)
-      {
-        if (param->d_ml_step[i - 1] % param->d_ml_step[i] || param->d_ml_step[i - 1] <= param->d_ml_step[i])
-        {
-          fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i - 1, i, __FILE__, __LINE__);
-          exit(EXIT_FAILURE);
-        }
-      }
-      if (param->d_ml_step[NLEVELS - 1] == 1)
-      {
-        fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS - 1, __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-      }
-    }
-
-#ifdef OPENMP_MODE
-    for (i = 0; i < STDIM; i++)
-    {
-      temp_i = param->d_size[i] % 2;
-      if (temp_i != 0)
-      {
-        fprintf(stderr, "Error: size[%d] is not even.\n", i);
-        fprintf(stderr, "When using OpenMP all the sides of the lattice have to be even! (%s, %d)\n", __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-      }
-    }
-#endif
-
-    err = 0;
-    for (i = 0; i < STDIM; i++)
-    {
-      if (param->d_size[i] == 1)
-      {
-        err = 1;
-      }
-    }
-    if (err == 1)
-    {
-      fprintf(stderr, "Error: all sizes has to be larger than 1: the totally reduced case is not implemented! (%s, %d)\n", __FILE__, __LINE__);
-    }
-
-    // various checks on OBC defect parameters
-    if (param->d_L_defect[0] > param->d_size[0])
-    {
-      fprintf(stderr, "Error: defect's t-length is greater than lattice's t-length (%s, %d)\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error in reading the file %s, err=%d (%s, %d)\n", in_file, err, __FILE__, __LINE__);
       exit(EXIT_FAILURE);
     }
-    if (param->d_L_defect[1] > param->d_size[2])
-    {
-      fprintf(stderr, "Error: defect's y-length is greater than lattice's y-length (%s, %d)\n", __FILE__, __LINE__);
-      exit(EXIT_FAILURE);
-    }
-    if (param->d_L_defect[2] > param->d_size[3])
-    {
-      fprintf(stderr, "Error: defect's z-length is greater than lattice's z-length (%s, %d)\n", __FILE__, __LINE__);
-      exit(EXIT_FAILURE);
-    }
-    // if(param->d_N_replica_pt<1)
-    // 	{
-    // 	fprintf(stderr, "Error: number of replica of parallel tempering must be greater than 0 (%s, %d)\n", __FILE__, __LINE__);
-    // 	exit(EXIT_FAILURE);
-    // 	}
+    read_keyword_value(input, in_file, key, param);
 
-    init_derived_constants(param);
-  }
+    remove_white_line_and_comments(input);
+  } while (!end_of_file(input));
+
+  fclose(input);
+
+  check_multilevel_steps(param);
+  check_lattice_sizes(param);
+  check_defect_size(param);
+
+  init_derived_constants(param);
 }
 
 void init_derived_constants(GParam *param)

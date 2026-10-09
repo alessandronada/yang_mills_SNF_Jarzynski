@@ -108,7 +108,7 @@ void print_template_input(void)
     fprintf(fp, "#for gradient flow evolution\n");
     fprintf(fp, "gfstep      0.02    # integration step for gradient flow\n");
     fprintf(fp, "num_gfsteps 100     # number of integration steps for gradient flow\n");
-		fprintf(fp, "gfstep_each 5       # compute observables every <gfstep_each> integration steps during the gradient flow\n");
+		fprintf(fp, "gf_meas_each 5      # compute observables every <gf_meas_each> integration steps during the gradient flow\n");
 		fprintf(fp, "\n");
     fprintf(fp, "#output files\n");
     fprintf(fp, "conf_file  conf.dat\n");
