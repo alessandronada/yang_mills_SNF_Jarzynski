@@ -157,66 +157,6 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
 	return delta;
 }
 
-double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param)
-{
-	int r, i, j, aux_i;
-	double re_tr_plaq, K, act;
-
-	// for each value of defect_dir, determine the three orthogonal directions to it
-	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
-
-	// sum not over all the plaquettes of the lattice, but only those with one direction being the defect direction
-	act = 0.0;
-	i = param->d_defect_dir;
-	for (r = 0; r < (param->d_volume); r++)
-		for (aux_i = 0; aux_i < STDIM - 1; aux_i++)
-		{
-			// contribution to action of site r on plane (i,j)
-			j = perp_dir[param->d_defect_dir][aux_i];
-
-			// plaquettes
-			re_tr_plaq = plaquettep(GC, geo, param, r, i, j); // (Re Tr plaq(r,i,j) )/N_c
-
-			// boundary conditions
-			K = (GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]);
-
-			// d_action = - beta * K * plaq
-			act += - param->d_beta * K * re_tr_plaq;
-		}
-
-	return act;
-}
-
-double compute_defect_action_all(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param)
-{
-	long r;
-    double pl=0.0;
-
-    #ifdef OPENMP_MODE
-    #pragma omp parallel for num_threads(NTHREADS) private(r) reduction(+ : pl)
-    #endif
-    for(r=0; r<(param->d_volume); r++)
-	{
-    	int i, j;
-    	double re_tr_plaq, K; // private to each thread
-
-    	for(i=0; i<STDIM; i++)
-        {
-        	for(j=i+1; j<STDIM; j++)
-            {
-				// plaquettes
-				re_tr_plaq = plaquettep(GC, geo, param, r, i, j);// (Re Tr plaq(r,i,j) )/N_c
-				// boundary conditions
-				K = (GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]);
-
-				pl += K * re_tr_plaq;
-            }
-        }
-	}
-
-	return - param->d_beta * pl;
-}
-
 // Wilson action with the defect, -beta sum_P K_P ReTr(P)/N_c (without the constant), restricted to the
 // plaquettes P(r,i,j) with base site r in the rectangle box.
 // A step of a flow in the boundary conditions changes only the factors C of the defect links (sites of

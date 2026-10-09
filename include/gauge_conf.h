@@ -483,8 +483,6 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 				 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters);
 double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param,
                          long const r, int const i, int const j, int const a, int const b);
-double compute_defect_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param);
-double compute_defect_action_all(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param);
 double compute_local_action(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param,
                             Rectangle const * const box);
 void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double const p, Acc_Utils *acc_counters);
