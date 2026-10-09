@@ -1324,8 +1324,10 @@ void print_parameters_local_flow_beta(GParam const *const param, time_t time_sta
   fprintf(fp, "beta_0: %.10lf\n", param->d_beta);
   fprintf(fp, "beta_target: %.10lf\n", param->d_flow_beta_target);
   if (param->d_anisotropic != 0)
+  {
     fprintf(fp, "beta_t_0: %.10lf\n", param->d_beta_t);
     fprintf(fp, "beta_t_target: %.10lf\n", param->d_flow_beta_t_target);
+  }
 #ifdef THETA_MODE
   fprintf(fp, "theta: %.10lf\n", param->d_theta);
 #endif
