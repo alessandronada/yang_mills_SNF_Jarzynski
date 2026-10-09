@@ -39,6 +39,7 @@ void real_main(char *in_file)
 
     // read input file
     readinput(in_file, &param);
+    check_flow_bc_input(&param);
 
     // initialize random generator
     initrand(param.d_randseed);
@@ -302,17 +303,17 @@ int main(int argc, char **argv)
         if (strlen(argv[1]) >= STD_STRING_LENGTH)
         {
             fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
-            return EXIT_SUCCESS;
+            return EXIT_FAILURE;
         }
         else
         {
-#if (STDIM == 4 && NCOLOR > 1)
+#if (STDIM == 4 && NCOLOR == 3)
             strcpy(in_file, argv[1]);
             real_main(in_file);
             return EXIT_SUCCESS;
 #else
-            fprintf(stderr, "Parallel tempering of volume defect not implemented for STDIM =/= 4 and N_color < 2.\n");
-            return EXIT_SUCCESS;
+            fprintf(stderr, "SNF implemented only for STDIM = 4 and N_c = 3 (Jacobian of the stout smearing).\n");
+            return EXIT_FAILURE;
 #endif
         }
     }

@@ -121,6 +121,8 @@ typedef struct GParam {
 void remove_white_line_and_comments(FILE *input);
 void readinput(char *in_file, GParam *param);
 void init_derived_constants(GParam *param);
+void check_flow_beta_input(GParam const *param);
+void check_flow_bc_input(GParam const *param);
 void init_start_end_protocol_beta(GParam const *const param, int npar);
 void init_start_end_protocol_bc(GParam const *const param);
 void init_protocol(GParam const * const param, int npar);

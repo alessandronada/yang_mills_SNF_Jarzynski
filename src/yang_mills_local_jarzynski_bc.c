@@ -39,6 +39,7 @@ void real_main(char *in_file)
 
   // read input file
   readinput(in_file, &param);
+  check_flow_bc_input(&param);
 
   // initialize random generator
   initrand(param.d_randseed);
@@ -293,7 +294,7 @@ int main(int argc, char **argv)
     if (strlen(argv[1]) >= STD_STRING_LENGTH)
     {
       fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
-      return EXIT_SUCCESS;
+      return EXIT_FAILURE;
     }
     else
     {
@@ -303,7 +304,7 @@ int main(int argc, char **argv)
       return EXIT_SUCCESS;
 #else
       fprintf(stderr, "Parallel tempering of volume defect not implemented for STDIM =/= 4 and N_color < 2.\n");
-      return EXIT_SUCCESS;
+      return EXIT_FAILURE;
 #endif
     }
   }

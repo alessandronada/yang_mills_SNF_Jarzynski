@@ -512,6 +512,56 @@ void init_derived_constants(GParam *param)
   }
 }
 
+static void check_flow_steps(GParam const *param)
+{
+  if (param->d_flow_steps < 1)
+  {
+    fprintf(stderr, "Error: num_flow_steps = %d, it has to be at least 1 (%s, %d)\n",
+            param->d_flow_steps, __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+}
+
+// checks of the input of the flows in beta, to be called after readinput
+void check_flow_beta_input(GParam const *param)
+{
+  check_flow_steps(param);
+
+  // the flows in beta measure every num_flow_dmeas steps of an evolution
+  if (param->d_flow_dmeas < 1)
+  {
+    fprintf(stderr, "Error: num_flow_dmeas = %d, it has to be at least 1 (%s, %d)\n",
+            param->d_flow_dmeas, __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+}
+
+// checks of the input of the flows in the boundary conditions, to be called after readinput
+void check_flow_bc_input(GParam const *param)
+{
+  int k;
+
+  check_flow_steps(param);
+
+  // the flows in the boundary conditions need a defect (defect_dir = -1, the default, means no defect)
+  if (param->d_defect_dir < 0)
+  {
+    fprintf(stderr, "Error: a flow in the boundary conditions needs defect_dir and defect_size (%s, %d)\n",
+            __FILE__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  // and a non-empty one (defect_size defaults to 0)
+  for (k = 0; k < STDIM - 1; k++)
+  {
+    if (param->d_L_defect[k] < 1)
+    {
+      fprintf(stderr, "Error: defect_size[%d] = %d, it has to be at least 1 (%s, %d)\n",
+              k, param->d_L_defect[k], __FILE__, __LINE__);
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
 void init_start_end_protocol_beta(GParam const *const param, int npar)
 {
   int err;
